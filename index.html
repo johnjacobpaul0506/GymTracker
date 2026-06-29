@@ -294,6 +294,26 @@
             border-radius: var(--border-radius);
             border: 1px solid var(--border-color);
         }
+
+        /* Calendar & Week */
+        .week-toggle { background: var(--surface-color); padding: 0.5rem; border-radius: var(--border-radius); margin-bottom: 1rem; border: 1px solid var(--border-color); }
+        .calendar-row { display: flex; justify-content: space-between; background: var(--surface-color); padding: 1rem; border-radius: var(--border-radius); border: 1px solid var(--border-color); }
+        .calendar-day { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .calendar-day .day-name { font-size: 0.75rem; color: var(--text-secondary); }
+        .calendar-day .day-date { font-size: 1rem; font-weight: bold; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+        .calendar-day.active .day-date { background: var(--primary-color); color: #000; }
+        .calendar-day .dot { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
+        .calendar-day .dot.active { background: var(--success-color); }
+
+        /* Sets Rows */
+        .set-row { display: grid; grid-template-columns: 40px 1fr 1fr 40px; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+        .set-row input { padding: 0.5rem; text-align: center; }
+        .set-row .set-number { font-weight: bold; color: var(--text-secondary); text-align: center; }
+
+        /* History Modal */
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
+        .history-table th, .history-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .history-table th { color: var(--text-secondary); }
         
     </style>
 </head>
@@ -309,6 +329,16 @@
              DASHBOARD VIEW
              ========================================= -->
         <section id="view-dashboard" class="view active">
+            <div class="week-toggle flex justify-between align-center">
+                <button class="btn-icon" onclick="changeWeek(-1)">◀</button>
+                <h3 id="current-week-label" style="margin:0; font-size: 1rem;">This Week</h3>
+                <button class="btn-icon" onclick="changeWeek(1)">▶</button>
+            </div>
+            
+            <div class="calendar-row mb-2" id="dashboard-calendar">
+                <!-- Rendered via JS -->
+            </div>
+
             <div class="card text-center" id="dashboard-attendance">
                 <!-- Rendered via JS -->
             </div>
@@ -346,6 +376,7 @@
             <div id="active-workout" style="display: none;">
                 <div class="flex justify-between align-center mb-2">
                     <h2 id="active-workout-title">Workout</h2>
+                    <input type="date" id="workout-date" style="width: auto; padding: 0.25rem 0.5rem; background: var(--surface-light); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px;">
                     <button class="btn-icon" onclick="cancelWorkout()">✖️</button>
                 </div>
                 <div id="workout-exercise-list">
@@ -422,6 +453,17 @@
         </div>
     </div>
 
+    <!-- Exercise History Modal -->
+    <div id="ex-history-overlay" class="modal-overlay">
+        <div class="modal" style="max-height: 80vh; overflow-y: auto;">
+            <div class="flex justify-between align-center mb-1">
+                <h3 id="ex-history-title">Exercise History</h3>
+                <button class="btn-icon" onclick="closeExHistory()">✖</button>
+            </div>
+            <div id="ex-history-content"></div>
+        </div>
+    </div>
+
     <!-- =========================================
          JAVASCRIPT LOGIC
          ========================================= -->
@@ -434,7 +476,8 @@
         // Default Data Structure
         let appData = {
             modules: [],
-            history: []
+            history: [],
+            exercises: [] // Global exercise registry
         };
 
         function loadData() {
@@ -445,6 +488,45 @@
                 } catch (e) {
                     console.error("Failed to parse local storage data.");
                 }
+            }
+            
+            // Migration for unique global exercises and new sets structure
+            if (!appData.exercises) {
+                appData.exercises = [];
+                let exMap = {};
+                
+                // Build global exercises
+                appData.modules.forEach(m => {
+                    m.days.forEach(d => {
+                        d.exercises.forEach(ex => {
+                            let nameKey = ex.name.toLowerCase().trim();
+                            if (!exMap[nameKey]) {
+                                let newId = generateId();
+                                exMap[nameKey] = newId;
+                                appData.exercises.push({ id: newId, name: ex.name });
+                            }
+                            ex.id = exMap[nameKey]; // update to global ID
+                        });
+                    });
+                });
+                
+                // Migrate history
+                appData.history.forEach(h => {
+                    h.exercises.forEach(ex => {
+                        let nameKey = ex.name.toLowerCase().trim();
+                        if (exMap[nameKey]) ex.id = exMap[nameKey];
+                        
+                        if (!ex.setsList && (ex.weight || ex.sets || ex.reps)) {
+                            // Convert old W/S/R to new setsList
+                            ex.setsList = [];
+                            let numSets = parseInt(ex.sets) || 1;
+                            for (let i=0; i<numSets; i++) {
+                                ex.setsList.push({ weight: ex.weight || '', reps: ex.reps || '' });
+                            }
+                        }
+                    });
+                });
+                saveData();
             }
         }
 
@@ -530,6 +612,13 @@
         /* -----------------------------------------
            3. DASHBOARD LOGIC
            ----------------------------------------- */
+        let currentWeekOffset = 0;
+
+        function changeWeek(offset) {
+            currentWeekOffset += offset;
+            renderDashboard();
+        }
+
         function getMonday(d) {
             const date = new Date(d);
             const day = date.getDay();
@@ -537,14 +626,22 @@
             return new Date(date.setDate(diff)).setHours(0,0,0,0);
         }
 
-        function getWeeklyStats() {
+        function getStartOfWeek(offset = 0) {
             const now = new Date();
-            const startOfWeek = getMonday(now);
+            now.setDate(now.getDate() + (offset * 7));
+            return getMonday(now);
+        }
+
+        function getWeeklyStats(startOfWeekTime) {
+            const startOfWeek = startOfWeekTime;
             const endOfWeek = startOfWeek + (7 * 24 * 60 * 60 * 1000) - 1;
 
             const workoutsThisWeek = appData.history.filter(w => w.date >= startOfWeek && w.date <= endOfWeek);
             const uniqueDays = new Set(workoutsThisWeek.map(w => new Date(w.date).toDateString()));
-            return uniqueDays.size;
+            return {
+                count: uniqueDays.size,
+                workouts: workoutsThisWeek
+            };
         }
 
         function calculateStreak() {
@@ -575,6 +672,22 @@
         function renderDashboard() {
             const container = document.getElementById('dashboard-attendance');
             const statsContainer = document.getElementById('dashboard-stats');
+            const calendarContainer = document.getElementById('dashboard-calendar');
+            const weekLabel = document.getElementById('current-week-label');
+            
+            // Set Week Label
+            const startOfWeekTime = getStartOfWeek(currentWeekOffset);
+            const endOfWeekTime = startOfWeekTime + (6 * 24 * 60 * 60 * 1000);
+            
+            if (currentWeekOffset === 0) {
+                weekLabel.innerText = "This Week";
+            } else if (currentWeekOffset === -1) {
+                weekLabel.innerText = "Last Week";
+            } else {
+                const sDate = new Date(startOfWeekTime);
+                const eDate = new Date(endOfWeekTime);
+                weekLabel.innerText = `${sDate.toLocaleDateString(undefined, {month:'short', day:'numeric'})} - ${eDate.toLocaleDateString(undefined, {month:'short', day:'numeric'})}`;
+            }
             
             if (appData.modules.length === 0) {
                 container.innerHTML = `
@@ -585,10 +698,34 @@
                     </div>
                 `;
                 statsContainer.innerHTML = '';
+                if(calendarContainer) calendarContainer.innerHTML = '';
                 return;
             }
 
-            const weeklyVisits = getWeeklyStats();
+            const weeklyData = getWeeklyStats(startOfWeekTime);
+            const weeklyVisits = weeklyData.count;
+            
+            // Render Calendar
+            let calHtml = '';
+            const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            const todayStr = new Date().toDateString();
+            
+            for(let i=0; i<7; i++) {
+                let dayTime = startOfWeekTime + (i * 24 * 60 * 60 * 1000);
+                let dayDate = new Date(dayTime);
+                let isToday = dayDate.toDateString() === todayStr;
+                let hasWorkout = weeklyData.workouts.some(w => new Date(w.date).toDateString() === dayDate.toDateString());
+                
+                calHtml += `
+                    <div class="calendar-day ${isToday ? 'active' : ''}">
+                        <span class="day-name">${dayNames[i]}</span>
+                        <span class="day-date">${dayDate.getDate()}</span>
+                        <div class="dot ${hasWorkout ? 'active' : ''}"></div>
+                    </div>
+                `;
+            }
+            calendarContainer.innerHTML = calHtml;
+
             const isGood = weeklyVisits >= 3;
             const emoji = isGood ? '😄' : '😞';
             const msg = isGood ? "Great job! Keep the momentum going." : "Let's get back to the grind!";
@@ -694,6 +831,7 @@
             // Find PB (Max Weight) and Last Session Data
             let pb = 0;
             let lastSession = null;
+            let lastDate = null;
             
             // Iterate backwards (history is newest first visually, but let's sort by date descending)
             const sortedHistory = [...appData.history].sort((a,b) => b.date - a.date);
@@ -701,12 +839,47 @@
             for (const session of sortedHistory) {
                 const ex = session.exercises.find(e => e.id === exerciseId);
                 if (ex) {
-                    if (!lastSession) lastSession = ex; // First found is the most recent
-                    if (Number(ex.weight) > pb) pb = Number(ex.weight);
+                    if (!lastSession) {
+                        lastSession = ex; // First found is the most recent
+                        lastDate = session.date;
+                    }
+                    // Calc PB based on max weight in setsList
+                    if (ex.setsList) {
+                        ex.setsList.forEach(s => {
+                            if (Number(s.weight) > pb) pb = Number(s.weight);
+                        });
+                    } else if (Number(ex.weight) > pb) { // legacy fallback
+                        pb = Number(ex.weight);
+                    }
                 }
             }
-            return { pb, lastSession };
+            return { pb, lastSession, lastDate };
         }
+
+        // Global functions for Sets UI
+        window.addSetRow = function(exId, weight = '', reps = '') {
+            const container = document.getElementById(`sets-container-${exId}`);
+            if (!container) return;
+            const setIndex = container.children.length + 1;
+            const row = document.createElement('div');
+            row.className = 'set-row';
+            row.innerHTML = `
+                <div class="set-number">${setIndex}</div>
+                <input type="number" step="0.5" class="set-weight" placeholder="kg" value="${weight}">
+                <input type="number" class="set-reps" placeholder="Reps" value="${reps}">
+                <button class="btn-icon text-danger" style="padding: 4px;" onclick="removeSetRow(this, '${exId}')">✖</button>
+            `;
+            container.appendChild(row);
+        };
+
+        window.removeSetRow = function(btn, exId) {
+            btn.parentElement.remove();
+            // Re-number remaining sets
+            const container = document.getElementById(`sets-container-${exId}`);
+            Array.from(container.children).forEach((row, idx) => {
+                row.querySelector('.set-number').innerText = idx + 1;
+            });
+        };
 
         function startWorkout() {
             const modId = document.getElementById('select-module').value;
@@ -733,18 +906,27 @@
             document.getElementById('workout-selection').style.display = 'none';
             document.getElementById('active-workout').style.display = 'block';
             document.getElementById('active-workout-title').innerText = `${mod.name} - ${day.name}`;
+            
+            // Set date picker to today
+            document.getElementById('workout-date').valueAsDate = new Date();
 
             const listContainer = document.getElementById('workout-exercise-list');
             listContainer.innerHTML = '';
 
-            day.exercises.forEach((ex, index) => {
+            day.exercises.forEach((exRef, index) => {
+                const ex = appData.exercises.find(e => e.id === exRef.id) || exRef;
                 const stats = getExerciseHistoryStats(ex.id);
-                const prevW = stats.lastSession ? stats.lastSession.weight : '';
-                const prevS = stats.lastSession ? stats.lastSession.sets : '';
-                const prevR = stats.lastSession ? stats.lastSession.reps : '';
+                
+                let lastDateStr = '';
+                if (stats.lastDate) {
+                    const d = new Date(stats.lastDate);
+                    lastDateStr = `Last on ${d.getDate()}/${d.toLocaleString('default', {month:'short'})}/${d.getFullYear().toString().substr(-2)}`;
+                }
 
                 const card = document.createElement('div');
-                card.className = 'card mb-2';
+                card.className = 'card mb-2 ex-card';
+                card.dataset.exId = ex.id;
+                card.dataset.exName = ex.name;
                 card.innerHTML = `
                     <div class="card-header" style="margin-bottom: 0;">
                         <h3 class="text-primary">${index + 1}. ${ex.name}</h3>
@@ -752,25 +934,35 @@
                     </div>
                     
                     ${stats.lastSession ? `
-                    <p style="font-size: 0.8rem; margin-top: 0.5rem;">Previous: ${prevW}kg x ${prevS} sets x ${prevR} reps</p>
+                    <a href="javascript:void(0)" onclick="showExerciseHistory('${ex.id}', '${ex.name}')" style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--secondary-color); text-decoration: underline;">${lastDateStr} (Click for history)</a>
                     ` : '<p style="font-size: 0.8rem; margin-top: 0.5rem;">First time performing this exercise.</p>'}
                     
-                    <div class="exercise-grid mt-1">
-                        <div>
-                            <label style="font-size: 0.8rem; color: var(--text-secondary);">Weight</label>
-                            <input type="number" step="0.5" id="ex-w-${ex.id}" placeholder="kg/lbs" value="${prevW}">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.8rem; color: var(--text-secondary);">Sets</label>
-                            <input type="number" id="ex-s-${ex.id}" placeholder="Sets" value="${prevS}">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.8rem; color: var(--text-secondary);">Reps</label>
-                            <input type="number" id="ex-r-${ex.id}" placeholder="Reps" value="${prevR}">
-                        </div>
+                    <div class="flex justify-between mt-2 mb-1" style="font-size: 0.8rem; color: var(--text-secondary); padding: 0 45px 0 50px;">
+                        <span>Weight (kg)</span>
+                        <span>Reps</span>
                     </div>
+                    
+                    <div id="sets-container-${ex.id}">
+                        <!-- Sets will be injected here -->
+                    </div>
+                    
+                    <button class="btn btn-secondary mt-1" style="font-size: 0.8rem; padding: 0.5rem;" onclick="addSetRow('${ex.id}')">+ Add Set</button>
                 `;
                 listContainer.appendChild(card);
+                
+                // Pre-fill sets based on last session
+                if (stats.lastSession && stats.lastSession.setsList) {
+                    stats.lastSession.setsList.forEach(s => {
+                        window.addSetRow(ex.id, s.weight, s.reps);
+                    });
+                } else if (stats.lastSession && stats.lastSession.weight) {
+                    // Legacy migration fallback
+                    let num = parseInt(stats.lastSession.sets) || 1;
+                    for(let i=0; i<num; i++) window.addSetRow(ex.id, stats.lastSession.weight, stats.lastSession.reps);
+                } else {
+                    // Empty initial set
+                    window.addSetRow(ex.id);
+                }
             });
         }
 
@@ -789,31 +981,49 @@
             
             const sessionExercises = [];
             
-            day.exercises.forEach(ex => {
-                const w = document.getElementById(`ex-w-${ex.id}`).value;
-                const s = document.getElementById(`ex-s-${ex.id}`).value;
-                const r = document.getElementById(`ex-r-${ex.id}`).value;
+            const exCards = document.querySelectorAll('.ex-card');
+            exCards.forEach(card => {
+                const exId = card.dataset.exId;
+                const exName = card.dataset.exName;
+                const setRows = card.querySelectorAll('.set-row');
                 
-                // Only save if at least one field has data
-                if (w || s || r) {
+                let setsList = [];
+                setRows.forEach(row => {
+                    const w = row.querySelector('.set-weight').value;
+                    const r = row.querySelector('.set-reps').value;
+                    if (w || r) {
+                        setsList.push({ weight: w, reps: r });
+                    }
+                });
+                
+                if (setsList.length > 0) {
                     sessionExercises.push({
-                        id: ex.id,
-                        name: ex.name,
-                        weight: w,
-                        sets: s,
-                        reps: r
+                        id: exId,
+                        name: exName,
+                        setsList: setsList
                     });
                 }
             });
 
             if (sessionExercises.length === 0) {
-                alert("Please log at least one exercise to save the workout.");
+                alert("Please log at least one exercise set to save the workout.");
                 return;
+            }
+            
+            // Get Date from picker
+            const dateInput = document.getElementById('workout-date').value;
+            let workoutDate = new Date().getTime();
+            if (dateInput) {
+                // Combine selected date with current time for correct sorting of same-day workouts
+                const selectedDate = new Date(dateInput);
+                const now = new Date();
+                selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+                workoutDate = selectedDate.getTime();
             }
 
             const historyEntry = {
                 id: generateId(),
-                date: new Date().getTime(),
+                date: workoutDate,
                 moduleId: activeWorkoutData.moduleId,
                 moduleName: activeWorkoutData.moduleName,
                 dayId: activeWorkoutData.dayId,
@@ -862,12 +1072,17 @@
                 const d = new Date(h.date);
                 const dateStr = d.toLocaleDateString(undefined, {weekday: 'short', month: 'short', day: 'numeric', year: 'numeric'});
                 
-                let exHtml = h.exercises.map(ex => `
-                    <div class="flex justify-between mb-1" style="font-size: 0.9rem;">
-                        <span>${ex.name}</span>
-                        <span class="text-secondary">${ex.weight ? ex.weight+'kg' : '-'} | ${ex.sets ? ex.sets+'s' : '-'} | ${ex.reps ? ex.reps+'r' : '-'}</span>
-                    </div>
-                `).join('');
+                let exHtml = h.exercises.map(ex => {
+                    let setsText = ex.setsList 
+                        ? ex.setsList.map(s => `${s.weight}kg x ${s.reps}`).join(', ') 
+                        : `${ex.weight}kg | ${ex.sets}s | ${ex.reps}r`; // legacy fallback
+                    return `
+                        <div class="flex justify-between mb-1" style="font-size: 0.9rem;">
+                            <span>${ex.name}</span>
+                            <span class="text-secondary" style="font-size: 0.8rem; text-align: right; max-width: 60%;">${setsText}</span>
+                        </div>
+                    `;
+                }).join('');
 
                 return `
                     <div class="card">
@@ -886,6 +1101,42 @@
                 `;
             }).join('');
         }
+        
+        // Exercise History Modal Logic
+        window.showExerciseHistory = function(exId, exName) {
+            document.getElementById('ex-history-title').innerText = exName + " History";
+            const content = document.getElementById('ex-history-content');
+            
+            // Find all past sessions for this exercise
+            const sessions = [];
+            appData.history.forEach(h => {
+                const ex = h.exercises.find(e => e.id === exId);
+                if (ex) {
+                    sessions.push({ date: h.date, setsList: ex.setsList || [{weight: ex.weight, reps: ex.reps}] });
+                }
+            });
+            
+            sessions.sort((a,b) => b.date - a.date);
+            
+            if (sessions.length === 0) {
+                content.innerHTML = "<p style='padding: 1rem 0;'>No history found.</p>";
+            } else {
+                let html = '<table class="history-table"><thead><tr><th>Date</th><th>Sets (kg x reps)</th></tr></thead><tbody>';
+                sessions.forEach(s => {
+                    const d = new Date(s.date).toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'2-digit'});
+                    const setsStr = s.setsList.map(set => `${set.weight}x${set.reps}`).join(', ');
+                    html += `<tr><td>${d}</td><td>${setsStr}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                content.innerHTML = html;
+            }
+            
+            document.getElementById('ex-history-overlay').classList.add('active');
+        };
+
+        window.closeExHistory = function() {
+            document.getElementById('ex-history-overlay').classList.remove('active');
+        };
 
         /* -----------------------------------------
            6. SETTINGS / CONFIGURATION LOGIC
@@ -1000,19 +1251,36 @@
         function promptAddExercise(modId, dayId) {
             showModal("Add Exercise", "e.g., Bench Press", "", (val) => {
                 if(val) {
+                    let exName = val.trim();
+                    let existingEx = appData.exercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
+                    let exId;
+                    
+                    if (existingEx) {
+                        exId = existingEx.id;
+                        exName = existingEx.name; // Use existing exact casing to stay uniform
+                    } else {
+                        exId = generateId();
+                        appData.exercises.push({ id: exId, name: exName });
+                    }
+
                     const m = appData.modules.find(x => x.id === modId);
                     const d = m.days.find(x => x.id === dayId);
-                    if(d) { d.exercises.push({ id: generateId(), name: val }); saveData(); renderSettings(); }
+                    if(d) { d.exercises.push({ id: exId, name: exName }); saveData(); renderSettings(); }
                 }
             });
         }
         function promptRenameExercise(modId, dayId, exId, oldName) {
             showModal("Rename Exercise", "", oldName, (val) => {
                 if(val) {
+                    let newName = val.trim();
+                    // Update global name too so all historical references update visually
+                    const globalEx = appData.exercises.find(x => x.id === exId);
+                    if (globalEx) globalEx.name = newName;
+                    
                     const m = appData.modules.find(x => x.id === modId);
                     const d = m.days.find(x => x.id === dayId);
                     const e = d.exercises.find(x => x.id === exId);
-                    if(e) { e.name = val; saveData(); renderSettings(); }
+                    if(e) { e.name = newName; saveData(); renderSettings(); }
                 }
             });
         }
@@ -1043,7 +1311,7 @@
 
         function resetAllData() {
             if(confirm("Are you absolutely sure? This cannot be undone.")) {
-                appData = { modules: [], history: [] };
+                appData = { modules: [], history: [], exercises: [] };
                 saveData();
                 showToast("All data wiped.");
                 renderSettings();
@@ -1058,6 +1326,18 @@
             
             // If completely empty on first launch, load a sample template to help user get started
             if (!localStorage.getItem(STORAGE_KEY)) {
+                // Initialize global exercises
+                const exData = [
+                    {id: generateId(), name: "Bench Press"},
+                    {id: generateId(), name: "Incline DB Press"},
+                    {id: generateId(), name: "Lateral Raises"},
+                    {id: generateId(), name: "Tricep Pushdown"},
+                    {id: generateId(), name: "Lat Pulldown"},
+                    {id: generateId(), name: "Seated Row"},
+                    {id: generateId(), name: "Bicep Curls"}
+                ];
+                appData.exercises = exData;
+                
                 appData.modules = [
                     {
                         id: generateId(),
@@ -1067,19 +1347,19 @@
                                 id: generateId(),
                                 name: "Push Day",
                                 exercises: [
-                                    {id: generateId(), name: "Bench Press"},
-                                    {id: generateId(), name: "Incline DB Press"},
-                                    {id: generateId(), name: "Lateral Raises"},
-                                    {id: generateId(), name: "Tricep Pushdown"}
+                                    {id: exData[0].id, name: exData[0].name},
+                                    {id: exData[1].id, name: exData[1].name},
+                                    {id: exData[2].id, name: exData[2].name},
+                                    {id: exData[3].id, name: exData[3].name}
                                 ]
                             },
                             {
                                 id: generateId(),
                                 name: "Pull Day",
                                 exercises: [
-                                    {id: generateId(), name: "Lat Pulldown"},
-                                    {id: generateId(), name: "Seated Row"},
-                                    {id: generateId(), name: "Bicep Curls"}
+                                    {id: exData[4].id, name: exData[4].name},
+                                    {id: exData[5].id, name: exData[5].name},
+                                    {id: exData[6].id, name: exData[6].name}
                                 ]
                             }
                         ]
