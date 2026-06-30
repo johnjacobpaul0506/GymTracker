@@ -314,7 +314,143 @@
         .history-table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
         .history-table th, .history-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); }
         .history-table th { color: var(--text-secondary); }
-        
+
+        .text-danger { color: var(--error-color); }
+
+        /* =========================================
+           PERSON TOGGLE & PER-PERSON SAVE
+           ========================================= */
+        .person-toggle {
+            display: flex;
+            background-color: var(--surface-light);
+            border-radius: var(--border-radius);
+            padding: 4px;
+            gap: 4px;
+            margin-bottom: 1rem;
+        }
+        .person-toggle-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 0.6rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .person-toggle-btn.active.person-john { background-color: var(--primary-color); color: #000; }
+        .person-toggle-btn.active.person-emily { background-color: var(--secondary-color); color: #000; }
+
+        .exercise-save-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border-color);
+        }
+        .btn-save-person {
+            flex: 1;
+            padding: 0.6rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--surface-light);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .btn-save-person.person-john { color: var(--primary-color); border-color: var(--primary-color); }
+        .btn-save-person.person-emily { color: var(--secondary-color); border-color: var(--secondary-color); }
+        .btn-save-person:active { opacity: 0.7; }
+        .btn-save-person.just-saved { background-color: var(--success-color) !important; color: #fff !important; border-color: var(--success-color) !important; }
+
+        /* =========================================
+           EXERCISE PICKER MODAL
+           ========================================= */
+        .picker-modal { max-width: 420px; max-height: 82vh; display: flex; flex-direction: column; }
+        .picker-list { overflow-y: auto; flex: 1; margin: 0.75rem 0; border-top: 1px solid var(--border-color); }
+        .picker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0.25rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        .picker-item input[type="checkbox"] { width: 19px; height: 19px; accent-color: var(--primary-color); flex-shrink: 0; }
+        .picker-empty { text-align: center; padding: 1.5rem; color: var(--text-secondary); font-size: 0.9rem; }
+
+        /* =========================================
+           EXERCISE LIBRARY (SETTINGS)
+           ========================================= */
+        .lib-item-name { font-size: 0.95rem; }
+
+        /* =========================================
+           CHALLENGES
+           ========================================= */
+        .challenge-card { cursor: pointer; }
+        .challenge-card:active { opacity: 0.9; }
+        .challenge-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem; }
+        .challenge-pill {
+            font-size: 0.75rem;
+            background-color: var(--surface-light);
+            padding: 3px 10px;
+            border-radius: 20px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .mini-progress-container { width: 100%; height: 8px; background-color: var(--surface-light); border-radius: 4px; overflow: hidden; margin: 4px 0 12px 0; }
+        .mini-progress-bar { height: 100%; transition: width 0.5s ease; border-radius: 4px; }
+        .mini-progress-bar.person-john { background-color: var(--primary-color); }
+        .mini-progress-bar.person-emily { background-color: var(--secondary-color); }
+        .mini-progress-bar.goal-hit { background-color: var(--success-color) !important; }
+        .progress-bar.goal-hit { background-color: var(--success-color); }
+
+        .challenge-person-row:last-child .mini-progress-container { margin-bottom: 0; }
+        .challenge-person-label { font-size: 0.8rem; color: var(--text-secondary); display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .challenge-person-label.person-john span:first-child { color: var(--primary-color); font-weight: 600; }
+        .challenge-person-label.person-emily span:first-child { color: var(--secondary-color); font-weight: 600; }
+
+        .task-card {
+            background-color: var(--surface-light);
+            border-radius: 10px;
+            padding: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+        .task-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; gap: 0.5rem; }
+        .task-type-badge { font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+        .task-person-block { background-color: var(--surface-color); border-radius: 8px; padding: 0.65rem 0.75rem; margin-top: 0.5rem; }
+        .task-person-block-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; }
+        .task-person-block-header.person-john { color: var(--primary-color); }
+        .task-person-block-header.person-emily { color: var(--secondary-color); }
+        .task-action-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.45rem; flex-wrap: wrap; }
+        .task-action-row .btn { width: auto; padding: 0.45rem 0.9rem; font-size: 0.8rem; }
+        .task-note { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem; }
+
+        .draft-task-chip {
+            background-color: var(--surface-light);
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+        .draft-task-chip .meta { color: var(--text-secondary); font-size: 0.72rem; }
+
+        .large-modal { max-width: 480px; max-height: 85vh; overflow-y: auto; }
+        .task-builder-box { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.85rem; margin-top: 0.75rem; }
+        .task-type-row { display: flex; gap: 0.5rem; }
+        .task-type-row select { flex: 1; }
+
+        .empty-state-small { text-align: center; padding: 1.75rem 1rem; color: var(--text-secondary); font-size: 0.9rem; }
+        .empty-state-small .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
     </style>
 </head>
 <body>
@@ -357,6 +493,12 @@
              WORKOUT VIEW
              ========================================= -->
         <section id="view-workout" class="view">
+            <p style="font-size: 0.8rem; margin-bottom: 0.4rem;">Logging for:</p>
+            <div class="person-toggle" id="workout-person-toggle">
+                <button type="button" class="person-toggle-btn person-john" onclick="setSelectedLogPerson('John')">John</button>
+                <button type="button" class="person-toggle-btn person-emily" onclick="setSelectedLogPerson('Emily')">Emily</button>
+            </div>
+
             <div id="workout-selection">
                 <!-- Select Module and Day -->
                 <div class="card" id="workout-setup-card">
@@ -379,10 +521,11 @@
                     <input type="date" id="workout-date" style="width: auto; padding: 0.25rem 0.5rem; background: var(--surface-light); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px;">
                     <button class="btn-icon" onclick="cancelWorkout()">✖️</button>
                 </div>
+
                 <div id="workout-exercise-list">
                     <!-- Exercises rendered here -->
                 </div>
-                <button class="btn btn-primary mt-2 mb-2" onclick="saveWorkout()">Save Workout</button>
+                <button class="btn btn-primary mt-2 mb-2" onclick="saveWorkout()">Save Workout for the Day</button>
             </div>
         </section>
 
@@ -397,10 +540,42 @@
         </section>
 
         <!-- =========================================
+             CHALLENGES VIEW
+             ========================================= -->
+        <section id="view-challenges" class="view">
+            <div class="flex justify-between align-center mb-2">
+                <h2 style="margin:0;">Challenges</h2>
+                <button class="btn-icon" style="background: var(--primary-color); color:#000;" onclick="openCreateChallenge()">➕</button>
+            </div>
+            <div id="challenges-list">
+                <!-- Challenges rendered here -->
+            </div>
+        </section>
+
+        <!-- =========================================
              SETTINGS / CONFIG VIEW
              ========================================= -->
         <section id="view-settings" class="view">
-            <h2 class="mb-2">Workout Configuration</h2>
+            <h2 class="mb-2">Settings</h2>
+
+            <div class="card">
+                <h3 class="mb-1">Weekly Goal</h3>
+                <p class="mb-1">Used on the Dashboard to judge if you're on track.</p>
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label>Workouts per week</label>
+                    <input type="number" id="weekly-goal-input" min="1" max="14" onchange="updateWeeklyGoal(this.value)">
+                </div>
+            </div>
+
+            <h2 class="mb-2 mt-2">Exercise Library</h2>
+            <button class="btn btn-secondary mb-2" onclick="promptAddGlobalExercise()">+ Add New Exercise</button>
+            <div class="card">
+                <div id="exercise-library-list">
+                    <!-- Master exercise list rendered here -->
+                </div>
+            </div>
+
+            <h2 class="mb-2 mt-2">Workout Configuration</h2>
             <button class="btn btn-secondary mb-2" onclick="promptAddModule()">+ Create New Module</button>
             
             <div id="settings-modules-list">
@@ -429,6 +604,10 @@
         <div class="nav-item" data-target="history" onclick="navTo('history')">
             <span class="icon">🕒</span>
             <span>History</span>
+        </div>
+        <div class="nav-item" data-target="challenges" onclick="navTo('challenges')">
+            <span class="icon">🏆</span>
+            <span>Challenges</span>
         </div>
         <div class="nav-item" data-target="settings" onclick="navTo('settings')">
             <span class="icon">⚙️</span>
@@ -464,6 +643,97 @@
         </div>
     </div>
 
+    <!-- Exercise Picker Modal (Add Exercise From List) -->
+    <div id="exercise-picker-overlay" class="modal-overlay">
+        <div class="modal picker-modal">
+            <div class="flex justify-between align-center mb-1">
+                <h3>Add Exercise</h3>
+                <button class="btn-icon" onclick="closeExercisePicker()">✖</button>
+            </div>
+            <input type="text" id="picker-search" placeholder="Search the exercise list..." oninput="renderExercisePickerList()">
+            <div class="picker-list" id="picker-list"></div>
+            <div class="input-group" style="margin-bottom: 0.5rem;">
+                <label>Not on the list? Add a new one</label>
+                <div class="flex gap-1">
+                    <input type="text" id="picker-new-exercise" placeholder="e.g., Cable Crunches">
+                    <button class="btn-icon" style="background: var(--primary-color); color:#000;" onclick="addCustomExerciseFromPicker()">➕</button>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="confirmExercisePicker()">Add Selected</button>
+        </div>
+    </div>
+
+    <!-- Create Challenge Modal -->
+    <div id="challenge-create-overlay" class="modal-overlay">
+        <div class="modal large-modal">
+            <div class="flex justify-between align-center mb-1">
+                <h3>Create Challenge</h3>
+                <button class="btn-icon" onclick="closeCreateChallenge()">✖</button>
+            </div>
+
+            <div class="input-group">
+                <label>Challenge Name</label>
+                <input type="text" id="challenge-name-input" placeholder="e.g., Onam Challenge">
+            </div>
+
+            <div class="flex gap-1">
+                <div class="input-group" style="flex:1;">
+                    <label>Start Date</label>
+                    <input type="date" id="challenge-start-input">
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>Duration (weeks)</label>
+                    <input type="number" id="challenge-duration-input" min="1" value="10">
+                </div>
+            </div>
+
+            <h4 class="mb-1">Tasks</h4>
+            <p id="draft-tasks-empty" style="font-size:0.85rem;">No tasks added yet — add at least one below.</p>
+            <div id="draft-tasks-list"></div>
+
+            <div class="task-builder-box">
+                <div class="input-group mb-1">
+                    <label>Task Description</label>
+                    <input type="text" id="task-title-input" placeholder="e.g., 100km walk">
+                </div>
+                <div class="input-group mb-1">
+                    <label>Tracking Type</label>
+                    <select id="task-type-input" onchange="onTaskTypeChange()">
+                        <option value="cumulative">Cumulative total (e.g., km, push ups)</option>
+                        <option value="gym_auto">Gym workouts (auto-counted from Workout log)</option>
+                        <option value="daily">Daily checklist (e.g., water, steps)</option>
+                    </select>
+                </div>
+                <div class="flex gap-1" id="task-target-row">
+                    <div class="input-group" style="flex:1;">
+                        <label id="task-target-label">Target Amount</label>
+                        <input type="number" id="task-target-input" placeholder="100" min="0">
+                    </div>
+                    <div class="input-group" style="flex:1;" id="task-unit-wrap">
+                        <label>Unit</label>
+                        <input type="text" id="task-unit-input" placeholder="km">
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="addDraftTask()">+ Add Task</button>
+            </div>
+
+            <button class="btn btn-primary mt-2" onclick="submitCreateChallenge()">Create Challenge</button>
+        </div>
+    </div>
+
+    <!-- Challenge Detail Modal -->
+    <div id="challenge-detail-overlay" class="modal-overlay">
+        <div class="modal large-modal">
+            <div class="flex justify-between align-center mb-1">
+                <h3 id="challenge-detail-title">Challenge</h3>
+                <button class="btn-icon" onclick="closeChallengeDetail()">✖</button>
+            </div>
+            <p id="challenge-detail-dates" class="mb-2"></p>
+            <div id="challenge-detail-tasks"></div>
+            <button class="btn btn-danger mt-2" id="challenge-delete-btn" onclick="deleteChallengeFromDetail()">Delete Challenge</button>
+        </div>
+    </div>
+
     <!-- =========================================
          JAVASCRIPT LOGIC
          ========================================= -->
@@ -472,12 +742,18 @@
            1. STATE MANAGEMENT & LOCAL STORAGE
            ----------------------------------------- */
         const STORAGE_KEY = 'gym_progress_tracker_data';
-        
+
+        // The people whose progress this app tracks
+        const PEOPLE = ['John', 'Emily'];
+        const DEFAULT_WEEKLY_GOAL = 4;
+
         // Default Data Structure
         let appData = {
             modules: [],
             history: [],
-            exercises: [] // Global exercise registry
+            exercises: [], // Global exercise registry
+            weeklyGoal: DEFAULT_WEEKLY_GOAL,
+            challenges: []
         };
 
         function loadData() {
@@ -528,6 +804,25 @@
                 });
                 saveData();
             }
+
+            // Migration: every history entry needs an owner. Existing entries pre-date
+            // person tracking, so attribute them to John (the original sole logger).
+            let needsSave = false;
+            appData.history.forEach(h => {
+                if (!h.person) { h.person = 'John'; needsSave = true; }
+            });
+
+            // Migration: weekly goal & challenges may not exist on older saves
+            if (typeof appData.weeklyGoal !== 'number' || appData.weeklyGoal <= 0) {
+                appData.weeklyGoal = DEFAULT_WEEKLY_GOAL;
+                needsSave = true;
+            }
+            if (!appData.challenges) {
+                appData.challenges = [];
+                needsSave = true;
+            }
+
+            if (needsSave) saveData();
         }
 
         function saveData() {
@@ -542,11 +837,12 @@
         /* -----------------------------------------
            2. NAVIGATION & UI HELPERS
            ----------------------------------------- */
-        const views = ['dashboard', 'workout', 'history', 'settings'];
+        const views = ['dashboard', 'workout', 'history', 'challenges', 'settings'];
         const viewTitles = {
             'dashboard': 'Gym Progress',
             'workout': 'Log Workout',
             'history': 'History',
+            'challenges': 'Challenges',
             'settings': 'Configuration'
         };
 
@@ -573,6 +869,7 @@
             if (targetView === 'settings') renderSettings();
             if (targetView === 'workout') renderWorkoutSetup();
             if (targetView === 'history') renderHistory();
+            if (targetView === 'challenges') renderChallenges();
         }
 
         function showToast(message) {
@@ -669,6 +966,39 @@
             return streak;
         }
 
+        // Judge progress against pace through the week, not just a flat total.
+        // A single workout on Monday is "on track" toward a 4/week goal — it
+        // shouldn't read the same as zero workouts by Sunday.
+        function getDashboardStatus(weeklyVisits, startOfWeekTime, isCurrentWeek) {
+            const goal = appData.weeklyGoal || DEFAULT_WEEKLY_GOAL;
+            const now = Date.now();
+
+            // Browsing a week that hasn't started yet — nothing to judge.
+            if (startOfWeekTime > now) {
+                return { emoji: '📅', msg: "This week hasn't started yet.", state: 'upcoming' };
+            }
+
+            if (weeklyVisits >= goal) {
+                return { emoji: '🎉', msg: `Goal smashed! You hit ${weeklyVisits}/${goal} workouts.`, state: 'achieved' };
+            }
+
+            if (!isCurrentWeek) {
+                // A past, completed week that fell short of goal.
+                return { emoji: '😞', msg: `You managed ${weeklyVisits}/${goal} workouts that week.`, state: 'missed' };
+            }
+
+            // Current, still-in-progress week: judge against pace, not the final goal.
+            const jsDay = new Date().getDay(); // Sun=0...Sat=6
+            const todayIdx = jsDay === 0 ? 7 : jsDay; // Mon=1...Sun=7
+            const expectedSoFar = goal * (todayIdx / 7);
+
+            if (weeklyVisits >= expectedSoFar) {
+                return { emoji: '💪', msg: `You're on track! ${weeklyVisits}/${goal} workouts so far this week.`, state: 'on-track' };
+            }
+
+            return { emoji: '😞', msg: `You're behind pace — ${weeklyVisits}/${goal} workouts so far this week.`, state: 'behind' };
+        }
+
         function renderDashboard() {
             const container = document.getElementById('dashboard-attendance');
             const statsContainer = document.getElementById('dashboard-stats');
@@ -726,18 +1056,18 @@
             }
             calendarContainer.innerHTML = calHtml;
 
-            const isGood = weeklyVisits >= 3;
-            const emoji = isGood ? '😄' : '😞';
-            const msg = isGood ? "Great job! Keep the momentum going." : "Let's get back to the grind!";
-            const progressPercent = Math.min((weeklyVisits / 7) * 100, 100);
+            const status = getDashboardStatus(weeklyVisits, startOfWeekTime, currentWeekOffset === 0);
+            const goal = appData.weeklyGoal || DEFAULT_WEEKLY_GOAL;
+            const progressPercent = Math.min((weeklyVisits / goal) * 100, 100);
 
             container.innerHTML = `
-                <div style="font-size: 4rem; margin-bottom: 0.5rem;">${emoji}</div>
-                <h2>You visited the gym <span class="text-primary">${weeklyVisits}</span> days this week.</h2>
-                <p class="mt-1">${msg}</p>
+                <div style="font-size: 4rem; margin-bottom: 0.5rem;">${status.emoji}</div>
+                <h2>You visited the gym <span class="text-primary">${weeklyVisits}</span> day${weeklyVisits === 1 ? '' : 's'} this week.</h2>
+                <p class="mt-1">${status.msg}</p>
                 <div class="progress-container mt-2">
-                    <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                    <div class="progress-bar ${weeklyVisits >= goal ? 'goal-hit' : ''}" style="width: ${progressPercent}%"></div>
                 </div>
+                <p class="mt-1" style="font-size:0.7rem;">Goal: ${goal}/week · adjust in Settings</p>
             `;
 
             const streak = calculateStreak();
@@ -771,6 +1101,98 @@
            ----------------------------------------- */
         let activeWorkoutData = null; // Stores current workout session state
 
+        // Who "Save Workout for the Day" currently attributes the session to.
+        // Remembered across visits so you don't have to re-pick it every time.
+        let currentLogPerson = localStorage.getItem('gym_last_person') || 'John';
+
+        function setSelectedLogPerson(person) {
+            currentLogPerson = person;
+            localStorage.setItem('gym_last_person', person);
+            renderPersonToggle();
+        }
+
+        function renderPersonToggle() {
+            const toggle = document.getElementById('workout-person-toggle');
+            if (!toggle) return;
+            toggle.querySelectorAll('.person-toggle-btn').forEach(btn => {
+                const isJohn = btn.classList.contains('person-john');
+                btn.classList.toggle('active', (isJohn && currentLogPerson === 'John') || (!isJohn && currentLogPerson === 'Emily'));
+            });
+        }
+
+        // Calendar-day key (ignores time-of-day) so repeat saves on the same
+        // date/person/workout update one record instead of duplicating it.
+        function dateKeyFromMs(ms) {
+            return new Date(ms).toDateString();
+        }
+
+        function getWorkoutDateMs() {
+            const dateInput = document.getElementById('workout-date').value;
+            if (!dateInput) return new Date().getTime();
+            const selectedDate = new Date(dateInput);
+            const now = new Date();
+            selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
+            return selectedDate.getTime();
+        }
+
+        function findOrCreateHistoryEntry(workoutDateMs, moduleId, moduleName, dayId, dayName, person) {
+            const dayKey = dateKeyFromMs(workoutDateMs);
+            let entry = appData.history.find(h => h.person === person && h.dayId === dayId && dateKeyFromMs(h.date) === dayKey);
+            if (!entry) {
+                entry = { id: generateId(), date: workoutDateMs, moduleId, moduleName, dayId, dayName, person, exercises: [] };
+                appData.history.push(entry);
+            }
+            return entry;
+        }
+
+        function upsertExerciseInEntry(entry, exObj) {
+            const idx = entry.exercises.findIndex(e => e.id === exObj.id);
+            if (idx >= 0) entry.exercises[idx] = exObj;
+            else entry.exercises.push(exObj);
+        }
+
+        function collectSetsFromCard(card) {
+            const setRows = card.querySelectorAll('.set-row');
+            let setsList = [];
+            setRows.forEach(row => {
+                const w = row.querySelector('.set-weight').value;
+                const r = row.querySelector('.set-reps').value;
+                if (w || r) setsList.push({ weight: w, reps: r });
+            });
+            return setsList;
+        }
+
+        // Saves just ONE exercise's currently-entered sets for one person,
+        // without needing to finish (or even fill in) the rest of the workout.
+        function saveExerciseProgress(exId, exName, person, btnEl) {
+            if (!activeWorkoutData) return;
+            const card = document.querySelector(`.ex-card[data-ex-id="${exId}"]`);
+            if (!card) return;
+            const setsList = collectSetsFromCard(card);
+
+            if (setsList.length === 0) {
+                alert("Enter at least one set (weight or reps) before saving.");
+                return;
+            }
+
+            const workoutDateMs = getWorkoutDateMs();
+            const entry = findOrCreateHistoryEntry(workoutDateMs, activeWorkoutData.moduleId, activeWorkoutData.moduleName, activeWorkoutData.dayId, activeWorkoutData.dayName, person);
+            upsertExerciseInEntry(entry, { id: exId, name: exName, setsList });
+            saveData();
+
+            showToast(`Saved "${exName}" for ${person}`);
+
+            if (btnEl) {
+                const original = btnEl.innerText;
+                btnEl.innerText = '✓ Saved';
+                btnEl.classList.add('just-saved');
+                setTimeout(() => {
+                    btnEl.innerText = original;
+                    btnEl.classList.remove('just-saved');
+                }, 1500);
+            }
+        }
+
         function renderWorkoutSetup() {
             const selModule = document.getElementById('select-module');
             const selDay = document.getElementById('select-day');
@@ -778,6 +1200,7 @@
             
             document.getElementById('workout-selection').style.display = 'block';
             document.getElementById('active-workout').style.display = 'none';
+            renderPersonToggle();
 
             if (appData.modules.length === 0) {
                 setupCard.innerHTML = `
@@ -827,14 +1250,18 @@
             updateDays();
         }
 
-        function getExerciseHistoryStats(exerciseId) {
-            // Find PB (Max Weight) and Last Session Data
+        function getExerciseHistoryStats(exerciseId, person) {
+            // Find PB (Max Weight) and Last Session Data.
+            // When `person` is given, scope to their sessions only — otherwise
+            // Emily could open an exercise and see John's last numbers pre-filled.
             let pb = 0;
             let lastSession = null;
             let lastDate = null;
             
             // Iterate backwards (history is newest first visually, but let's sort by date descending)
-            const sortedHistory = [...appData.history].sort((a,b) => b.date - a.date);
+            const sortedHistory = [...appData.history]
+                .filter(h => !person || h.person === person)
+                .sort((a,b) => b.date - a.date);
             
             for (const session of sortedHistory) {
                 const ex = session.exercises.find(e => e.id === exerciseId);
@@ -909,18 +1336,19 @@
             
             // Set date picker to today
             document.getElementById('workout-date').valueAsDate = new Date();
+            renderPersonToggle();
 
             const listContainer = document.getElementById('workout-exercise-list');
             listContainer.innerHTML = '';
 
             day.exercises.forEach((exRef, index) => {
                 const ex = appData.exercises.find(e => e.id === exRef.id) || exRef;
-                const stats = getExerciseHistoryStats(ex.id);
+                const stats = getExerciseHistoryStats(ex.id, currentLogPerson);
                 
                 let lastDateStr = '';
                 if (stats.lastDate) {
                     const d = new Date(stats.lastDate);
-                    lastDateStr = `Last on ${d.getDate()}/${d.toLocaleString('default', {month:'short'})}/${d.getFullYear().toString().substr(-2)}`;
+                    lastDateStr = `${currentLogPerson}'s last on ${d.getDate()}/${d.toLocaleString('default', {month:'short'})}/${d.getFullYear().toString().substr(-2)}`;
                 }
 
                 const card = document.createElement('div');
@@ -930,11 +1358,11 @@
                 card.innerHTML = `
                     <div class="card-header" style="margin-bottom: 0;">
                         <h3 class="text-primary">${index + 1}. ${ex.name}</h3>
-                        ${stats.pb > 0 ? `<span style="font-size:0.8rem; background: var(--surface-light); padding: 2px 6px; border-radius: 4px;">🏆 PB: ${stats.pb}</span>` : ''}
+                        ${stats.pb > 0 ? `<span style="font-size:0.8rem; background: var(--surface-light); padding: 2px 6px; border-radius: 4px;">🏆 ${currentLogPerson}'s PB: ${stats.pb}</span>` : ''}
                     </div>
                     
                     ${stats.lastSession ? `
-                    <a href="javascript:void(0)" onclick="showExerciseHistory('${ex.id}', '${ex.name}')" style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--secondary-color); text-decoration: underline;">${lastDateStr} (Click for history)</a>
+                    <a href="javascript:void(0)" onclick="showExerciseHistory('${ex.id}', '${ex.name}')" style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--secondary-color); text-decoration: underline;">${lastDateStr} (view all history)</a>
                     ` : '<p style="font-size: 0.8rem; margin-top: 0.5rem;">First time performing this exercise.</p>'}
                     
                     <div class="flex justify-between mt-2 mb-1" style="font-size: 0.8rem; color: var(--text-secondary); padding: 0 45px 0 50px;">
@@ -947,6 +1375,11 @@
                     </div>
                     
                     <button class="btn btn-secondary mt-1" style="font-size: 0.8rem; padding: 0.5rem;" onclick="addSetRow('${ex.id}')">+ Add Set</button>
+
+                    <div class="exercise-save-row">
+                        <button type="button" class="btn-save-person person-john" onclick="saveExerciseProgress(this.closest('.ex-card').dataset.exId, this.closest('.ex-card').dataset.exName, 'John', this)">💾 Save for John</button>
+                        <button type="button" class="btn-save-person person-emily" onclick="saveExerciseProgress(this.closest('.ex-card').dataset.exId, this.closest('.ex-card').dataset.exName, 'Emily', this)">💾 Save for Emily</button>
+                    </div>
                 `;
                 listContainer.appendChild(card);
                 
@@ -976,32 +1409,15 @@
         function saveWorkout() {
             if (!activeWorkoutData) return;
 
-            const mod = appData.modules.find(m => m.id === activeWorkoutData.moduleId);
-            const day = mod.days.find(d => d.id === activeWorkoutData.dayId);
-            
             const sessionExercises = [];
-            
+
             const exCards = document.querySelectorAll('.ex-card');
             exCards.forEach(card => {
                 const exId = card.dataset.exId;
                 const exName = card.dataset.exName;
-                const setRows = card.querySelectorAll('.set-row');
-                
-                let setsList = [];
-                setRows.forEach(row => {
-                    const w = row.querySelector('.set-weight').value;
-                    const r = row.querySelector('.set-reps').value;
-                    if (w || r) {
-                        setsList.push({ weight: w, reps: r });
-                    }
-                });
-                
+                const setsList = collectSetsFromCard(card);
                 if (setsList.length > 0) {
-                    sessionExercises.push({
-                        id: exId,
-                        name: exName,
-                        setsList: setsList
-                    });
+                    sessionExercises.push({ id: exId, name: exName, setsList });
                 }
             });
 
@@ -1009,32 +1425,16 @@
                 alert("Please log at least one exercise set to save the workout.");
                 return;
             }
-            
-            // Get Date from picker
-            const dateInput = document.getElementById('workout-date').value;
-            let workoutDate = new Date().getTime();
-            if (dateInput) {
-                // Combine selected date with current time for correct sorting of same-day workouts
-                const selectedDate = new Date(dateInput);
-                const now = new Date();
-                selectedDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds());
-                workoutDate = selectedDate.getTime();
-            }
 
-            const historyEntry = {
-                id: generateId(),
-                date: workoutDate,
-                moduleId: activeWorkoutData.moduleId,
-                moduleName: activeWorkoutData.moduleName,
-                dayId: activeWorkoutData.dayId,
-                dayName: activeWorkoutData.dayName,
-                exercises: sessionExercises
-            };
-
-            appData.history.push(historyEntry);
+            // Upsert into today's entry for the currently-selected person, so this
+            // doesn't create a duplicate if some exercises were already saved
+            // individually via the per-exercise "Save for..." buttons.
+            const workoutDateMs = getWorkoutDateMs();
+            const entry = findOrCreateHistoryEntry(workoutDateMs, activeWorkoutData.moduleId, activeWorkoutData.moduleName, activeWorkoutData.dayId, activeWorkoutData.dayName, currentLogPerson);
+            sessionExercises.forEach(ex => upsertExerciseInEntry(entry, ex));
             saveData();
-            
-            showToast("Workout Saved Successfully!");
+
+            showToast(`Workout for the day saved (${currentLogPerson})!`);
             activeWorkoutData = null;
             navTo('dashboard');
         }
@@ -1089,7 +1489,10 @@
                         <div class="history-item-header" onclick="toggleHistory('${h.id}')">
                             <div>
                                 <h3 class="text-primary">${h.moduleName} - ${h.dayName}</h3>
-                                <p>${dateStr}</p>
+                                <div class="flex align-center gap-1 mt-1">
+                                    <p style="margin:0;">${dateStr}</p>
+                                    <span style="font-size:0.7rem; padding:2px 8px; border-radius:10px; background:var(--surface-light); color:${h.person === 'Emily' ? 'var(--secondary-color)' : 'var(--primary-color)'}; font-weight:600;">${h.person || 'John'}</span>
+                                </div>
                             </div>
                             <span style="font-size: 1.2rem;">🔽</span>
                         </div>
@@ -1107,12 +1510,12 @@
             document.getElementById('ex-history-title').innerText = exName + " History";
             const content = document.getElementById('ex-history-content');
             
-            // Find all past sessions for this exercise
+            // Find all past sessions for this exercise, across both people
             const sessions = [];
             appData.history.forEach(h => {
                 const ex = h.exercises.find(e => e.id === exId);
                 if (ex) {
-                    sessions.push({ date: h.date, setsList: ex.setsList || [{weight: ex.weight, reps: ex.reps}] });
+                    sessions.push({ date: h.date, person: h.person || 'John', setsList: ex.setsList || [{weight: ex.weight, reps: ex.reps}] });
                 }
             });
             
@@ -1121,11 +1524,12 @@
             if (sessions.length === 0) {
                 content.innerHTML = "<p style='padding: 1rem 0;'>No history found.</p>";
             } else {
-                let html = '<table class="history-table"><thead><tr><th>Date</th><th>Sets (kg x reps)</th></tr></thead><tbody>';
+                let html = '<table class="history-table"><thead><tr><th>Date</th><th>Who</th><th>Sets (kg x reps)</th></tr></thead><tbody>';
                 sessions.forEach(s => {
                     const d = new Date(s.date).toLocaleDateString(undefined, {day:'2-digit', month:'short', year:'2-digit'});
                     const setsStr = s.setsList.map(set => `${set.weight}x${set.reps}`).join(', ');
-                    html += `<tr><td>${d}</td><td>${setsStr}</td></tr>`;
+                    const personColor = s.person === 'Emily' ? 'var(--secondary-color)' : 'var(--primary-color)';
+                    html += `<tr><td>${d}</td><td style="color:${personColor}; font-weight:600;">${s.person}</td><td>${setsStr}</td></tr>`;
                 });
                 html += '</tbody></table>';
                 content.innerHTML = html;
@@ -1142,6 +1546,12 @@
            6. SETTINGS / CONFIGURATION LOGIC
            ----------------------------------------- */
         function renderSettings() {
+            // Weekly goal input
+            const goalInput = document.getElementById('weekly-goal-input');
+            if (goalInput) goalInput.value = appData.weeklyGoal || DEFAULT_WEEKLY_GOAL;
+
+            renderExerciseLibrary();
+
             const container = document.getElementById('settings-modules-list');
             
             if (appData.modules.length === 0) {
@@ -1248,26 +1658,178 @@
         }
 
         // --- Exercises ---
-        function promptAddExercise(modId, dayId) {
-            showModal("Add Exercise", "e.g., Bench Press", "", (val) => {
-                if(val) {
-                    let exName = val.trim();
-                    let existingEx = appData.exercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
-                    let exId;
-                    
-                    if (existingEx) {
-                        exId = existingEx.id;
-                        exName = existingEx.name; // Use existing exact casing to stay uniform
-                    } else {
-                        exId = generateId();
-                        appData.exercises.push({ id: exId, name: exName });
-                    }
+        // --- Weekly Goal ---
+        function updateWeeklyGoal(val) {
+            const n = parseInt(val, 10);
+            appData.weeklyGoal = (n && n > 0) ? n : DEFAULT_WEEKLY_GOAL;
+            saveData();
+            showToast(`Weekly goal set to ${appData.weeklyGoal}`);
+        }
 
-                    const m = appData.modules.find(x => x.id === modId);
-                    const d = m.days.find(x => x.id === dayId);
-                    if(d) { d.exercises.push({ id: exId, name: exName }); saveData(); renderSettings(); }
+        // --- Exercise Library (master list) ---
+        function renderExerciseLibrary() {
+            const container = document.getElementById('exercise-library-list');
+            if (!container) return;
+
+            if (appData.exercises.length === 0) {
+                container.innerHTML = `<div class="empty-state-small"><div class="emoji">🏋️</div><p>No exercises yet. Add your first one above.</p></div>`;
+                return;
+            }
+
+            const sorted = [...appData.exercises].sort((a,b) => a.name.localeCompare(b.name));
+
+            container.innerHTML = sorted.map(ex => {
+                const usageCount = appData.modules.reduce((count, m) => count + m.days.reduce((c2, d) => c2 + (d.exercises.some(e => e.id === ex.id) ? 1 : 0), 0), 0);
+                return `
+                    <div class="config-list-item" data-ex-id="${ex.id}" data-ex-name="${ex.name}" data-usage="${usageCount}">
+                        <span class="lib-item-name">${ex.name}</span>
+                        <div class="config-actions">
+                            <button class="btn-icon" onclick="promptRenameGlobalExercise(this.closest('[data-ex-id]').dataset.exId, this.closest('[data-ex-id]').dataset.exName)">✏️</button>
+                            <button class="btn-icon" onclick="deleteGlobalExercise(this.closest('[data-ex-id]').dataset.exId, this.closest('[data-ex-id]').dataset.usage)">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function promptAddGlobalExercise() {
+            showModal("Add New Exercise", "e.g., Cable Crunches", "", (val) => {
+                if (!val) return;
+                const name = val.trim();
+                if (appData.exercises.some(e => e.name.toLowerCase() === name.toLowerCase())) {
+                    alert(`"${name}" is already in your exercise library.`);
+                    return;
+                }
+                appData.exercises.push({ id: generateId(), name });
+                saveData();
+                renderExerciseLibrary();
+                showToast(`"${name}" added to your library`);
+            });
+        }
+
+        function promptRenameGlobalExercise(exId, oldName) {
+            showModal("Rename Exercise", "", oldName, (val) => {
+                if (!val) return;
+                const newName = val.trim();
+                const globalEx = appData.exercises.find(e => e.id === exId);
+                if (globalEx) globalEx.name = newName;
+
+                // Keep every day's local copy of the name in sync too.
+                appData.modules.forEach(m => m.days.forEach(d => {
+                    const localEx = d.exercises.find(e => e.id === exId);
+                    if (localEx) localEx.name = newName;
+                }));
+
+                saveData();
+                renderSettings();
+                showToast("Exercise renamed");
+            });
+        }
+
+        function deleteGlobalExercise(exId, usageCount) {
+            usageCount = parseInt(usageCount, 10) || 0;
+            const warning = usageCount > 0
+                ? `This exercise is used in ${usageCount} workout day${usageCount > 1 ? 's' : ''}. Deleting it removes it from your library and from those days (past history is kept). Continue?`
+                : "Remove this exercise from your library?";
+            if (!confirm(warning)) return;
+
+            appData.exercises = appData.exercises.filter(e => e.id !== exId);
+            appData.modules.forEach(m => m.days.forEach(d => {
+                d.exercises = d.exercises.filter(e => e.id !== exId);
+            }));
+
+            saveData();
+            renderSettings();
+            showToast("Exercise deleted");
+        }
+
+        // --- Exercise Picker (Add Exercise From List, used within a Day) ---
+        let pickerContext = { modId: null, dayId: null };
+        let pickerSelectedIds = new Set();
+
+        function promptAddExercise(modId, dayId) {
+            pickerContext = { modId, dayId };
+            pickerSelectedIds = new Set();
+            document.getElementById('picker-search').value = '';
+            document.getElementById('picker-new-exercise').value = '';
+            renderExercisePickerList();
+            document.getElementById('exercise-picker-overlay').classList.add('active');
+        }
+
+        function closeExercisePicker() {
+            document.getElementById('exercise-picker-overlay').classList.remove('active');
+        }
+
+        function renderExercisePickerList() {
+            const listEl = document.getElementById('picker-list');
+            const search = (document.getElementById('picker-search').value || '').toLowerCase().trim();
+            const m = appData.modules.find(x => x.id === pickerContext.modId);
+            const d = m ? m.days.find(x => x.id === pickerContext.dayId) : null;
+            const alreadyInDay = new Set(d ? d.exercises.map(e => e.id) : []);
+
+            const available = appData.exercises
+                .filter(e => !alreadyInDay.has(e.id))
+                .filter(e => !search || e.name.toLowerCase().includes(search))
+                .sort((a,b) => a.name.localeCompare(b.name));
+
+            if (available.length === 0) {
+                listEl.innerHTML = `<div class="picker-empty">${appData.exercises.length === 0 ? 'Your exercise library is empty — add one below.' : 'No matches (or they\u2019re already in this day).'}</div>`;
+                return;
+            }
+
+            listEl.innerHTML = available.map(e => `
+                <label class="picker-item">
+                    <input type="checkbox" value="${e.id}" ${pickerSelectedIds.has(e.id) ? 'checked' : ''} onchange="togglePickerSelection('${e.id}', this.checked)">
+                    <span>${e.name}</span>
+                </label>
+            `).join('');
+        }
+
+        function togglePickerSelection(exId, checked) {
+            if (checked) pickerSelectedIds.add(exId);
+            else pickerSelectedIds.delete(exId);
+        }
+
+        function addCustomExerciseFromPicker() {
+            const input = document.getElementById('picker-new-exercise');
+            const name = input.value.trim();
+            if (!name) return;
+
+            let existingEx = appData.exercises.find(e => e.name.toLowerCase() === name.toLowerCase());
+            let exId;
+            if (existingEx) {
+                exId = existingEx.id;
+            } else {
+                exId = generateId();
+                appData.exercises.push({ id: exId, name });
+                saveData();
+            }
+            pickerSelectedIds.add(exId);
+            input.value = '';
+            renderExercisePickerList();
+            showToast(`"${name}" added to your library and selected`);
+        }
+
+        function confirmExercisePicker() {
+            if (pickerSelectedIds.size === 0) {
+                alert("Select at least one exercise (or add a new one) first.");
+                return;
+            }
+            const m = appData.modules.find(x => x.id === pickerContext.modId);
+            const d = m.days.find(x => x.id === pickerContext.dayId);
+
+            pickerSelectedIds.forEach(exId => {
+                const globalEx = appData.exercises.find(e => e.id === exId);
+                if (globalEx && !d.exercises.some(e => e.id === exId)) {
+                    d.exercises.push({ id: exId, name: globalEx.name });
                 }
             });
+
+            const count = pickerSelectedIds.size;
+            saveData();
+            renderSettings();
+            closeExercisePicker();
+            showToast(`Added ${count} exercise${count > 1 ? 's' : ''}`);
         }
         function promptRenameExercise(modId, dayId, exId, oldName) {
             showModal("Rename Exercise", "", oldName, (val) => {
@@ -1311,7 +1873,7 @@
 
         function resetAllData() {
             if(confirm("Are you absolutely sure? This cannot be undone.")) {
-                appData = { modules: [], history: [], exercises: [] };
+                appData = { modules: [], history: [], exercises: [], weeklyGoal: DEFAULT_WEEKLY_GOAL, challenges: [] };
                 saveData();
                 showToast("All data wiped.");
                 renderSettings();
@@ -1319,52 +1881,443 @@
         }
 
         /* -----------------------------------------
-           7. INITIALIZATION
+           7. CHALLENGES LOGIC
+           ----------------------------------------- */
+        const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+        function getChallengeById(id) {
+            return appData.challenges.find(c => c.id === id);
+        }
+        function getTaskById(challenge, taskId) {
+            return challenge.tasks.find(t => t.id === taskId);
+        }
+        function computeChallengeEndDate(startMs, weeks) {
+            return startMs + (weeks * 7 * MS_PER_DAY) - 1;
+        }
+        function formatDateShort(ms) {
+            return new Date(ms).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+        }
+
+        // For "gym_auto" tasks: count unique calendar days this person has a
+        // workout logged within the challenge window. Draws directly on the
+        // person-tagged Workout history — no separate manual logging needed.
+        function computeGymAutoCount(challenge, person) {
+            const windowEnd = Math.min(challenge.endDate, Date.now());
+            const daySet = new Set();
+            appData.history.forEach(h => {
+                if (h.person === person && h.date >= challenge.startDate && h.date <= windowEnd) {
+                    daySet.add(dateKeyFromMs(h.date));
+                }
+            });
+            return daySet.size;
+        }
+
+        function getTaskProgress(challenge, task, person) {
+            const p = (task.progress && task.progress[person]) ? task.progress[person] : {};
+            let current = 0;
+            let target = task.target || 0;
+            let unit = task.unit || '';
+
+            if (task.type === 'cumulative') {
+                const logs = p.logs || [];
+                current = logs.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
+                current = Math.round(current * 100) / 100;
+            } else if (task.type === 'daily') {
+                const days = p.days || [];
+                current = days.length;
+                target = Math.round((challenge.endDate - challenge.startDate + 1) / MS_PER_DAY);
+            } else if (task.type === 'gym_auto') {
+                current = computeGymAutoCount(challenge, person);
+                unit = 'workouts';
+            }
+
+            const pct = target > 0 ? Math.min((current / target) * 100, 100) : 0;
+            return { current, target, unit, pct, isComplete: target > 0 && current >= target };
+        }
+
+        function renderChallenges() {
+            const container = document.getElementById('challenges-list');
+            if (!container) return;
+
+            if (appData.challenges.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="emoji">🏆</div>
+                        <h3>No challenges yet</h3>
+                        <p class="mt-1">Tap ➕ to create one — like a 10-week step or workout challenge you and Emily can both track.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const sorted = [...appData.challenges].sort((a,b) => b.startDate - a.startDate);
+            const now = Date.now();
+
+            container.innerHTML = sorted.map(c => {
+                let statusPill;
+                if (now < c.startDate) statusPill = 'Starts ' + formatDateShort(c.startDate);
+                else if (now > c.endDate) statusPill = 'Ended ' + formatDateShort(c.endDate);
+                else {
+                    const daysLeft = Math.max(0, Math.ceil((c.endDate - now) / MS_PER_DAY));
+                    statusPill = `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`;
+                }
+
+                const personRows = PEOPLE.map(person => {
+                    const taskProgresses = c.tasks.map(t => getTaskProgress(c, t, person));
+                    const avgPct = taskProgresses.length > 0
+                        ? taskProgresses.reduce((s, tp) => s + tp.pct, 0) / taskProgresses.length
+                        : 0;
+                    return `
+                        <div class="challenge-person-row">
+                            <div class="challenge-person-label person-${person.toLowerCase()}">
+                                <span>${person}</span>
+                                <span>${Math.round(avgPct)}%</span>
+                            </div>
+                            <div class="mini-progress-container">
+                                <div class="mini-progress-bar person-${person.toLowerCase()} ${avgPct >= 100 ? 'goal-hit' : ''}" style="width:${avgPct}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="card challenge-card" onclick="openChallengeDetail('${c.id}')">
+                        <div class="challenge-meta">
+                            <h3 style="margin:0;">${c.name}</h3>
+                            <span class="challenge-pill">${statusPill}</span>
+                        </div>
+                        <p class="mb-1" style="font-size:0.8rem;">${c.durationWeeks} week${c.durationWeeks === 1 ? '' : 's'} · ${c.tasks.length} task${c.tasks.length === 1 ? '' : 's'}</p>
+                        ${personRows}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- Create Challenge ---
+        let draftTasks = [];
+
+        function openCreateChallenge() {
+            draftTasks = [];
+            document.getElementById('challenge-name-input').value = '';
+            document.getElementById('challenge-duration-input').value = 10;
+            document.getElementById('challenge-start-input').valueAsDate = new Date();
+            document.getElementById('task-title-input').value = '';
+            document.getElementById('task-type-input').value = 'cumulative';
+            document.getElementById('task-target-input').value = '';
+            document.getElementById('task-unit-input').value = '';
+            onTaskTypeChange();
+            renderDraftTasksList();
+            document.getElementById('challenge-create-overlay').classList.add('active');
+        }
+
+        function closeCreateChallenge() {
+            document.getElementById('challenge-create-overlay').classList.remove('active');
+        }
+
+        function onTaskTypeChange() {
+            const type = document.getElementById('task-type-input').value;
+            const targetRow = document.getElementById('task-target-row');
+            const unitWrap = document.getElementById('task-unit-wrap');
+            const targetLabel = document.getElementById('task-target-label');
+
+            if (type === 'daily') {
+                targetRow.style.display = 'none';
+            } else if (type === 'gym_auto') {
+                targetRow.style.display = 'flex';
+                unitWrap.style.display = 'none';
+                targetLabel.innerText = 'Target (number of workouts)';
+            } else {
+                targetRow.style.display = 'flex';
+                unitWrap.style.display = 'block';
+                targetLabel.innerText = 'Target Amount';
+            }
+        }
+
+        function addDraftTask() {
+            const titleInput = document.getElementById('task-title-input');
+            const title = titleInput.value.trim();
+            const type = document.getElementById('task-type-input').value;
+
+            if (!title) {
+                alert("Give the task a short description first.");
+                return;
+            }
+
+            let target = 0, unit = '';
+            if (type === 'cumulative') {
+                target = parseFloat(document.getElementById('task-target-input').value) || 0;
+                unit = document.getElementById('task-unit-input').value.trim();
+                if (target <= 0) { alert("Enter a target amount greater than 0."); return; }
+            } else if (type === 'gym_auto') {
+                target = parseFloat(document.getElementById('task-target-input').value) || 0;
+                unit = 'workouts';
+                if (target <= 0) { alert("Enter a target number of workouts."); return; }
+            }
+
+            const progress = {};
+            PEOPLE.forEach(person => {
+                progress[person] = type === 'cumulative' ? { logs: [] } : (type === 'daily' ? { days: [] } : {});
+            });
+
+            draftTasks.push({ id: generateId(), title, type, target, unit, progress });
+
+            titleInput.value = '';
+            document.getElementById('task-target-input').value = '';
+            document.getElementById('task-unit-input').value = '';
+            renderDraftTasksList();
+        }
+
+        function removeDraftTask(idx) {
+            draftTasks.splice(idx, 1);
+            renderDraftTasksList();
+        }
+
+        function renderDraftTasksList() {
+            const listEl = document.getElementById('draft-tasks-list');
+            const emptyMsg = document.getElementById('draft-tasks-empty');
+            emptyMsg.style.display = draftTasks.length === 0 ? 'block' : 'none';
+
+            const typeLabels = { cumulative: 'Cumulative', gym_auto: 'Auto: Gym', daily: 'Daily checklist' };
+
+            listEl.innerHTML = draftTasks.map((t, idx) => {
+                let metaText = typeLabels[t.type];
+                if (t.type === 'cumulative') metaText += ` · target ${t.target}${t.unit ? ' ' + t.unit : ''}`;
+                if (t.type === 'gym_auto') metaText += ` · target ${t.target} workouts`;
+                return `
+                    <div class="draft-task-chip">
+                        <div>
+                            <div>${t.title}</div>
+                            <div class="meta">${metaText}</div>
+                        </div>
+                        <button class="btn-icon" style="padding:4px;" onclick="removeDraftTask(${idx})">🗑️</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function submitCreateChallenge() {
+            const name = document.getElementById('challenge-name-input').value.trim();
+            const startInput = document.getElementById('challenge-start-input').value;
+            const durationWeeks = parseInt(document.getElementById('challenge-duration-input').value, 10) || 0;
+
+            if (!name) { alert("Give the challenge a name first."); return; }
+            if (!startInput) { alert("Pick a start date."); return; }
+            if (durationWeeks <= 0) { alert("Duration must be at least 1 week."); return; }
+            if (draftTasks.length === 0) { alert("Add at least one task to track."); return; }
+
+            const startDate = new Date(startInput).setHours(0,0,0,0);
+            const endDate = computeChallengeEndDate(startDate, durationWeeks);
+
+            appData.challenges.push({
+                id: generateId(),
+                name,
+                startDate,
+                durationWeeks,
+                endDate,
+                tasks: draftTasks
+            });
+
+            saveData();
+            closeCreateChallenge();
+            renderChallenges();
+            showToast(`"${name}" challenge created`);
+        }
+
+        // --- Challenge Detail & Tracking ---
+        let activeChallengeId = null;
+
+        function openChallengeDetail(challengeId) {
+            activeChallengeId = challengeId;
+            renderChallengeDetail();
+            document.getElementById('challenge-detail-overlay').classList.add('active');
+        }
+
+        function closeChallengeDetail() {
+            document.getElementById('challenge-detail-overlay').classList.remove('active');
+            activeChallengeId = null;
+        }
+
+        function renderChallengeDetail() {
+            const challenge = getChallengeById(activeChallengeId);
+            if (!challenge) { closeChallengeDetail(); return; }
+
+            document.getElementById('challenge-detail-title').innerText = challenge.name;
+            document.getElementById('challenge-detail-dates').innerText =
+                `${formatDateShort(challenge.startDate)} - ${formatDateShort(challenge.endDate)} (${challenge.durationWeeks} week${challenge.durationWeeks === 1 ? '' : 's'})`;
+
+            const typeLabels = { cumulative: 'Cumulative', gym_auto: 'Auto · Gym Workouts', daily: 'Daily Checklist' };
+
+            document.getElementById('challenge-detail-tasks').innerHTML = challenge.tasks.map(task => {
+                const personBlocks = PEOPLE.map(person => {
+                    const prog = getTaskProgress(challenge, task, person);
+                    const progressText = task.type === 'daily'
+                        ? `${prog.current} / ${prog.target} days`
+                        : `${prog.current} / ${prog.target}${prog.unit ? ' ' + prog.unit : ''}`;
+                    let actionHtml = '';
+
+                    if (task.type === 'cumulative') {
+                        const logs = (task.progress[person] && task.progress[person].logs) || [];
+                        actionHtml = `
+                            <div class="task-action-row">
+                                <button class="btn btn-secondary" onclick="logCumulativeProgress('${challenge.id}','${task.id}','${person}')">+ Log</button>
+                                ${logs.length > 0 ? `<button class="btn btn-secondary" onclick="undoLastCumulativeLog('${challenge.id}','${task.id}','${person}')">↺ Undo Last</button>` : ''}
+                            </div>
+                        `;
+                    } else if (task.type === 'daily') {
+                        const days = (task.progress[person] && task.progress[person].days) || [];
+                        const doneToday = days.includes(new Date().toDateString());
+                        actionHtml = `
+                            <div class="task-action-row">
+                                <button class="btn ${doneToday ? 'btn-primary' : 'btn-secondary'}" onclick="toggleDailyProgress('${challenge.id}','${task.id}','${person}')">${doneToday ? '✓ Done Today' : 'Mark Today Done'}</button>
+                            </div>
+                        `;
+                    } else {
+                        actionHtml = `<p class="task-note">Auto-tracked from your Workout log — no action needed.</p>`;
+                    }
+
+                    return `
+                        <div class="task-person-block">
+                            <div class="task-person-block-header person-${person.toLowerCase()}">
+                                <span>${person}</span>
+                                <span>${progressText}</span>
+                            </div>
+                            <div class="mini-progress-container">
+                                <div class="mini-progress-bar person-${person.toLowerCase()} ${prog.isComplete ? 'goal-hit' : ''}" style="width:${prog.pct}%"></div>
+                            </div>
+                            ${actionHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="task-card">
+                        <div class="task-card-header">
+                            <strong>${task.title}</strong>
+                            <span class="task-type-badge">${typeLabels[task.type]}</span>
+                        </div>
+                        ${personBlocks}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function logCumulativeProgress(challengeId, taskId, person) {
+            const challenge = getChallengeById(challengeId);
+            const task = getTaskById(challenge, taskId);
+
+            showModal(`Log: ${task.title}`, `Amount${task.unit ? ' (' + task.unit + ')' : ''}`, '', (val) => {
+                const amount = parseFloat(val);
+                if (!val || isNaN(amount) || amount <= 0) {
+                    if (val) alert("Enter a positive number.");
+                    return;
+                }
+                if (!task.progress[person]) task.progress[person] = { logs: [] };
+                if (!task.progress[person].logs) task.progress[person].logs = [];
+                task.progress[person].logs.push({ amount, date: Date.now() });
+                saveData();
+                renderChallengeDetail();
+                renderChallenges();
+                showToast(`Logged ${amount}${task.unit ? ' ' + task.unit : ''} for ${person}`);
+            });
+        }
+
+        function undoLastCumulativeLog(challengeId, taskId, person) {
+            const challenge = getChallengeById(challengeId);
+            const task = getTaskById(challenge, taskId);
+            const logs = task.progress[person] && task.progress[person].logs;
+            if (!logs || logs.length === 0) return;
+            if (!confirm("Remove the most recent log entry?")) return;
+            logs.pop();
+            saveData();
+            renderChallengeDetail();
+            renderChallenges();
+        }
+
+        function toggleDailyProgress(challengeId, taskId, person) {
+            const challenge = getChallengeById(challengeId);
+            const task = getTaskById(challenge, taskId);
+            if (!task.progress[person]) task.progress[person] = { days: [] };
+            if (!task.progress[person].days) task.progress[person].days = [];
+
+            const todayKey = new Date().toDateString();
+            const days = task.progress[person].days;
+            const idx = days.indexOf(todayKey);
+            if (idx >= 0) days.splice(idx, 1);
+            else days.push(todayKey);
+
+            saveData();
+            renderChallengeDetail();
+            renderChallenges();
+        }
+
+        function deleteChallengeFromDetail() {
+            const challenge = getChallengeById(activeChallengeId);
+            if (!challenge) return;
+            if (!confirm(`Delete "${challenge.name}"? This cannot be undone.`)) return;
+            appData.challenges = appData.challenges.filter(c => c.id !== activeChallengeId);
+            saveData();
+            closeChallengeDetail();
+            renderChallenges();
+            showToast("Challenge deleted");
+        }
+
+        /* -----------------------------------------
+           8. INITIALIZATION
            ----------------------------------------- */
         function initApp() {
             loadData();
             
-            // If completely empty on first launch, load a sample template to help user get started
+            // If completely empty on first launch, load a starter template to help user get started
             if (!localStorage.getItem(STORAGE_KEY)) {
-                // Initialize global exercises
+                // Master exercise library, grouped so a default Push/Pull/Legs split can be built from it
                 const exData = [
-                    {id: generateId(), name: "Bench Press"},
-                    {id: generateId(), name: "Incline DB Press"},
-                    {id: generateId(), name: "Lateral Raises"},
-                    {id: generateId(), name: "Tricep Pushdown"},
-                    {id: generateId(), name: "Lat Pulldown"},
-                    {id: generateId(), name: "Seated Row"},
-                    {id: generateId(), name: "Bicep Curls"}
+                    {id: generateId(), name: "Smith Chest Press"},
+                    {id: generateId(), name: "Machine Chest Press"},
+                    {id: generateId(), name: "Machine Cable Flies"},
+                    {id: generateId(), name: "Tricep Push"},
+                    {id: generateId(), name: "Tricep Pull"},
+                    {id: generateId(), name: "Tricep Dips"},
+                    {id: generateId(), name: "Smith Shoulder Press"},
+                    {id: generateId(), name: "Machine Shoulder Press"},
+                    {id: generateId(), name: "Dumbell Lat Raises"},
+                    {id: generateId(), name: "Cable Lat Raises"},
+                    {id: generateId(), name: "Bicep Cable Curls"},
+                    {id: generateId(), name: "Forearm Curls"},
+                    {id: generateId(), name: "Hammer Curls"},
+                    {id: generateId(), name: "Pull ups"},
+                    {id: generateId(), name: "Lat Pull Down"},
+                    {id: generateId(), name: "Machine Cable Rows"},
+                    {id: generateId(), name: "Face Pull"},
+                    {id: generateId(), name: "Single Hand Lat Pull"},
+                    {id: generateId(), name: "Supported Cable Rows"},
+                    {id: generateId(), name: "Leg Press"},
+                    {id: generateId(), name: "Machine Leg Press"},
+                    {id: generateId(), name: "Calf Raise"},
+                    {id: generateId(), name: "Leg Curls"},
+                    {id: generateId(), name: "Leg Extension"}
                 ];
                 appData.exercises = exData;
-                
+
+                // Indices 0-9 = chest/tricep/shoulder, 10-18 = back/bicep, 19-23 = legs
+                const pushIdx = [0,1,2,3,4,5,6,7,8,9];
+                const pullIdx = [10,11,12,13,14,15,16,17,18];
+                const legIdx  = [19,20,21,22,23];
+                const toDayExercises = idxList => idxList.map(i => ({ id: exData[i].id, name: exData[i].name }));
+
                 appData.modules = [
                     {
                         id: generateId(),
                         name: "Push Pull Legs",
                         days: [
-                            {
-                                id: generateId(),
-                                name: "Push Day",
-                                exercises: [
-                                    {id: exData[0].id, name: exData[0].name},
-                                    {id: exData[1].id, name: exData[1].name},
-                                    {id: exData[2].id, name: exData[2].name},
-                                    {id: exData[3].id, name: exData[3].name}
-                                ]
-                            },
-                            {
-                                id: generateId(),
-                                name: "Pull Day",
-                                exercises: [
-                                    {id: exData[4].id, name: exData[4].name},
-                                    {id: exData[5].id, name: exData[5].name},
-                                    {id: exData[6].id, name: exData[6].name}
-                                ]
-                            }
+                            { id: generateId(), name: "Push Day", exercises: toDayExercises(pushIdx) },
+                            { id: generateId(), name: "Pull Day", exercises: toDayExercises(pullIdx) },
+                            { id: generateId(), name: "Leg Day", exercises: toDayExercises(legIdx) }
                         ]
                     }
                 ];
+
+                appData.weeklyGoal = DEFAULT_WEEKLY_GOAL;
+                appData.challenges = [];
                 saveData();
             }
             
