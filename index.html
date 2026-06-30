@@ -576,6 +576,7 @@
         <section id="view-settings" class="view">
             <h2 class="mb-2">Settings</h2>
 
+            <p id="storage-status" class="mb-1" style="font-size:0.78rem;"></p>
             <p id="supabase-status" class="mb-2" style="font-size:0.78rem;"></p>
 
             <div class="card">
@@ -805,8 +806,25 @@
             challenges: []
         };
 
+        // Some mobile browsers (notably iOS Safari, when a file is opened directly
+        // rather than served over http/https) block localStorage entirely and throw
+        // on access instead of just being empty. Without guarding against that, a
+        // thrown error here would abort initApp() before the exercise library is
+        // ever seeded — which looks exactly like "exercises just don't show up".
+        let storageAvailable = true;
+
+        function safeGetStorage() {
+            try {
+                return localStorage.getItem(STORAGE_KEY);
+            } catch (e) {
+                storageAvailable = false;
+                console.warn('localStorage is not accessible in this context:', e);
+                return null;
+            }
+        }
+
         function loadData() {
-            const stored = localStorage.getItem(STORAGE_KEY);
+            const stored = safeGetStorage();
             if (stored) {
                 try {
                     appData = JSON.parse(stored);
@@ -875,7 +893,19 @@
         }
 
         function saveData() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+                storageAvailable = true;
+            } catch (e) {
+                if (storageAvailable) {
+                    // Only surface this once per session, not on every keystroke-triggered save.
+                    storageAvailable = false;
+                    console.warn('Could not write to localStorage — changes will not persist:', e);
+                    if (typeof showToast === 'function') {
+                        showToast('⚠️ Storage unavailable on this device — changes won\'t be saved');
+                    }
+                }
+            }
         }
 
         // Generate simple unique IDs
@@ -1152,11 +1182,24 @@
 
         // Who "Save Workout for the Day" currently attributes the session to.
         // Remembered across visits so you don't have to re-pick it every time.
-        let currentLogPerson = localStorage.getItem('gym_last_person') || 'John';
+        // This runs at the top level (script load time), so it must not throw —
+        // an uncaught error here would previously abort the whole script before
+        // it even reached `window.onload = initApp` further down, meaning the
+        // app would never initialize or seed its exercise library at all.
+        let currentLogPerson = 'John';
+        try {
+            currentLogPerson = localStorage.getItem('gym_last_person') || 'John';
+        } catch (e) {
+            console.warn('Could not read last-used person from localStorage:', e);
+        }
 
         function setSelectedLogPerson(person) {
             currentLogPerson = person;
-            localStorage.setItem('gym_last_person', person);
+            try {
+                localStorage.setItem('gym_last_person', person);
+            } catch (e) {
+                console.warn('Could not save last-used person to localStorage:', e);
+            }
             renderPersonToggle();
         }
 
@@ -1598,6 +1641,17 @@
             // Weekly goal input
             const goalInput = document.getElementById('weekly-goal-input');
             if (goalInput) goalInput.value = appData.weeklyGoal || DEFAULT_WEEKLY_GOAL;
+
+            const storageEl = document.getElementById('storage-status');
+            if (storageEl) {
+                if (storageAvailable) {
+                    storageEl.innerHTML = '🟢 Local storage working — your data is saving on this device';
+                    storageEl.style.color = 'var(--success-color)';
+                } else {
+                    storageEl.innerHTML = '🔴 Local storage blocked on this device/browser — changes will NOT be saved after you close the page';
+                    storageEl.style.color = 'var(--error-color)';
+                }
+            }
 
             const statusEl = document.getElementById('supabase-status');
             if (statusEl) {
@@ -2336,8 +2390,10 @@
         function initApp() {
             loadData();
             
-            // If completely empty on first launch, load a starter template to help user get started
-            if (!localStorage.getItem(STORAGE_KEY)) {
+            // If completely empty on first launch (or storage is blocked entirely,
+            // in which case treat it the same as "nothing saved yet"), load a
+            // starter template so the app isn't blank.
+            if (!safeGetStorage()) {
                 // Master exercise library, grouped so a default Push/Pull/Legs split can be built from it
                 const exData = [
                     {id: generateId(), name: "Smith Chest Press"},
