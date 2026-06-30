@@ -584,8 +584,12 @@
             
             <div class="card mt-2">
                 <h3 class="text-danger">Danger Zone</h3>
-                <p class="mb-1">This will permanently delete all history and configuration.</p>
-                <button class="btn btn-danger" onclick="resetAllData()">Wipe All Data</button>
+
+                <p class="mb-1">Clears workout history and your Module/Day setup. Your Exercise Library and Challenges are kept.</p>
+                <button class="btn btn-danger mb-2" onclick="resetWorkoutData()">Reset Workout History & Routine</button>
+
+                <p class="mb-1" style="margin-top:1rem;">Deletes absolutely everything, including your Exercise Library and Challenges. There's no undo.</p>
+                <button class="btn btn-danger" onclick="wipeEverything()">Wipe Everything</button>
             </div>
         </section>
 
@@ -1871,11 +1875,21 @@
             renderSettings();
         }
 
-        function resetAllData() {
-            if(confirm("Are you absolutely sure? This cannot be undone.")) {
+        function resetWorkoutData() {
+            if(confirm("Delete all workout history and your Module/Day setup? Your Exercise Library and Challenges will NOT be touched. This cannot be undone.")) {
+                appData.history = [];
+                appData.modules = [];
+                saveData();
+                showToast("Workout history & routine wiped. Exercise Library and Challenges kept.");
+                renderSettings();
+            }
+        }
+
+        function wipeEverything() {
+            if(confirm("This deletes EVERYTHING — workout history, modules, your entire Exercise Library, and all Challenges. There is no undo. Type-check yourself: are you absolutely sure?")) {
                 appData = { modules: [], history: [], exercises: [], weeklyGoal: DEFAULT_WEEKLY_GOAL, challenges: [] };
                 saveData();
-                showToast("All data wiped.");
+                showToast("Everything wiped — starting from a blank slate.");
                 renderSettings();
             }
         }
