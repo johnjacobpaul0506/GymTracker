@@ -270,7 +270,7 @@
             justify-content: space-between;
             align-items: center;
         }
-        .config-actions { display: flex; gap: 0.5rem; }
+        .config-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
 
         /* Modal */
         .modal-overlay {
@@ -386,7 +386,7 @@
         /* =========================================
            EXERCISE LIBRARY (SETTINGS)
            ========================================= */
-        .lib-item-name { font-size: 0.95rem; }
+        .lib-item-name { font-size: 0.95rem; flex: 1; min-width: 0; word-break: break-word; }
 
         /* =========================================
            CHALLENGES
@@ -414,21 +414,36 @@
         .challenge-person-label.person-john span:first-child { color: var(--primary-color); font-weight: 600; }
         .challenge-person-label.person-emily span:first-child { color: var(--secondary-color); font-weight: 600; }
 
-        .task-card {
-            background-color: var(--surface-light);
-            border-radius: 10px;
-            padding: 0.9rem;
-            margin-bottom: 0.75rem;
-        }
-        .task-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; gap: 0.5rem; }
         .task-type-badge { font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-        .task-person-block { background-color: var(--surface-color); border-radius: 8px; padding: 0.65rem 0.75rem; margin-top: 0.5rem; }
-        .task-person-block-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; }
-        .task-person-block-header.person-john { color: var(--primary-color); }
-        .task-person-block-header.person-emily { color: var(--secondary-color); }
         .task-action-row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.45rem; flex-wrap: wrap; }
         .task-action-row .btn { width: auto; padding: 0.45rem 0.9rem; font-size: 0.8rem; }
         .task-note { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.3rem; }
+
+        /* Challenge detail — grouped by person, tasks listed underneath */
+        .person-section {
+            background-color: var(--surface-light);
+            border-radius: 10px;
+            padding: 0.9rem;
+            margin-bottom: 0.9rem;
+        }
+        .person-section:last-child { margin-bottom: 0; }
+        .person-section-header {
+            font-size: 1.05rem;
+            margin: 0 0 0.7rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .person-section-header.person-john { color: var(--primary-color); }
+        .person-section-header.person-emily { color: var(--secondary-color); }
+        .person-task-row {
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            padding: 0.65rem 0.75rem;
+            margin-bottom: 0.6rem;
+        }
+        .person-task-row:last-child { margin-bottom: 0; }
+        .person-task-row-header { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.3rem; }
+        .person-task-row-header span:first-child { flex: 1; min-width: 0; word-break: break-word; }
 
         .draft-task-chip {
             background-color: var(--surface-light);
@@ -452,6 +467,9 @@
         .empty-state-small .emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
 
     </style>
+
+    <!-- Supabase client library — only needed once you fill in your URL/key below -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
@@ -557,6 +575,8 @@
              ========================================= -->
         <section id="view-settings" class="view">
             <h2 class="mb-2">Settings</h2>
+
+            <p id="supabase-status" class="mb-2" style="font-size:0.78rem;"></p>
 
             <div class="card">
                 <h3 class="mb-1">Weekly Goal</h3>
@@ -742,6 +762,31 @@
          JAVASCRIPT LOGIC
          ========================================= -->
     <script>
+        /* -----------------------------------------
+           0. SUPABASE CONFIG (optional — fill in to switch storage later)
+           ----------------------------------------- 
+           Get these from your Supabase project: Dashboard -> Project Settings -> API.
+           SUPABASE_URL looks like 'https://xxxxxxxxxxxx.supabase.co'
+           SUPABASE_ANON_KEY is the long "anon / public" key (NOT the service_role key —
+           that one must never go in client-side code). The anon key is safe to expose
+           here as long as you set up Row Level Security (RLS) policies on your tables.
+
+           Leave both blank to keep the app exactly as it is now (saving to this
+           browser's localStorage only, nothing sent anywhere). Paste in real values
+           and `supabaseClient` below will initialize automatically on next load —
+           but note the rest of the app still reads/writes localStorage for now; the
+           actual save/load functions haven't been switched over to Supabase yet.
+           Tell me once you've got real values in here and I'll wire up the data layer.
+        */
+        const SUPABASE_URL = '';       // e.g. 'https://abcdefghijkl.supabase.co'
+        const SUPABASE_ANON_KEY = '';  // e.g. 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
+
+        let supabaseClient = null;
+        if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('Supabase client initialized (not yet used for storage).');
+        }
+
         /* -----------------------------------------
            1. STATE MANAGEMENT & LOCAL STORAGE
            ----------------------------------------- */
@@ -1360,9 +1405,9 @@
                 card.dataset.exId = ex.id;
                 card.dataset.exName = ex.name;
                 card.innerHTML = `
-                    <div class="card-header" style="margin-bottom: 0;">
-                        <h3 class="text-primary">${index + 1}. ${ex.name}</h3>
-                        ${stats.pb > 0 ? `<span style="font-size:0.8rem; background: var(--surface-light); padding: 2px 6px; border-radius: 4px;">🏆 ${currentLogPerson}'s PB: ${stats.pb}</span>` : ''}
+                    <div class="card-header" style="margin-bottom: 0; gap: 0.5rem;">
+                        <h3 class="text-primary" style="flex: 1; min-width: 0; word-break: break-word;">${index + 1}. ${ex.name}</h3>
+                        ${stats.pb > 0 ? `<span style="font-size:0.8rem; background: var(--surface-light); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; white-space: nowrap;">🏆 ${currentLogPerson}'s PB: ${stats.pb}</span>` : ''}
                     </div>
                     
                     ${stats.lastSession ? `
@@ -1554,6 +1599,17 @@
             const goalInput = document.getElementById('weekly-goal-input');
             if (goalInput) goalInput.value = appData.weeklyGoal || DEFAULT_WEEKLY_GOAL;
 
+            const statusEl = document.getElementById('supabase-status');
+            if (statusEl) {
+                if (supabaseClient) {
+                    statusEl.innerHTML = '🟢 Supabase client connected (storage still local for now)';
+                    statusEl.style.color = 'var(--success-color)';
+                } else {
+                    statusEl.innerHTML = '⚪ Supabase not configured — paste your URL & anon key near the top of the script';
+                    statusEl.style.color = 'var(--text-secondary)';
+                }
+            }
+
             renderExerciseLibrary();
 
             const container = document.getElementById('settings-modules-list');
@@ -1570,18 +1626,18 @@
             container.innerHTML = appData.modules.map(mod => `
                 <div class="card">
                     <div class="card-header">
-                        <h3>${mod.name}</h3>
-                        <div class="config-actions">
-                            <button class="btn-icon" onclick="promptRenameModule('${mod.id}', '${mod.name}')">✏️</button>
-                            <button class="btn-icon" onclick="deleteModule('${mod.id}')">🗑️</button>
-                        </div>
+                    <h3 style="flex: 1; min-width: 0; word-break: break-word; margin-bottom:0;">${mod.name}</h3>
+                    <div class="config-actions">
+                        <button class="btn-icon" onclick="promptRenameModule('${mod.id}', '${mod.name}')">✏️</button>
+                        <button class="btn-icon" onclick="deleteModule('${mod.id}')">🗑️</button>
                     </div>
+                </div>
                     
                     <div class="mt-2">
                         ${mod.days.map(day => `
                             <div class="config-list-item flex-col" style="align-items: stretch; border: 1px solid var(--border-color);">
-                                <div class="flex justify-between align-center mb-1">
-                                    <h4 class="text-primary">${day.name}</h4>
+                                <div class="flex justify-between align-center mb-1" style="gap: 0.5rem;">
+                                    <h4 class="text-primary" style="flex: 1; min-width: 0; word-break: break-word; margin-bottom:0;">${day.name}</h4>
                                     <div class="config-actions">
                                         <button class="btn-icon" onclick="promptRenameDay('${mod.id}', '${day.id}', '${day.name}')">✏️</button>
                                         <button class="btn-icon" onclick="deleteDay('${mod.id}', '${day.id}')">🗑️</button>
@@ -1590,8 +1646,8 @@
                                 
                                 <div class="mb-1">
                                     ${day.exercises.map((ex, idx) => `
-                                        <div class="flex justify-between align-center" style="padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                            <span style="font-size: 0.9rem;">${ex.name}</span>
+                                        <div class="flex justify-between align-center" style="padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 0.5rem;">
+                                            <span style="font-size: 0.9rem; flex: 1; min-width: 0; word-break: break-word;">${ex.name}</span>
                                             <div class="config-actions">
                                                 <button class="btn-icon" style="padding:2px; font-size:0.8rem;" onclick="moveExercise('${mod.id}','${day.id}','${ex.id}',-1)" ${idx === 0 ? 'disabled style="opacity:0.3"' : ''}>⬆️</button>
                                                 <button class="btn-icon" style="padding:2px; font-size:0.8rem;" onclick="moveExercise('${mod.id}','${day.id}','${ex.id}',1)" ${idx === day.exercises.length-1 ? 'disabled style="opacity:0.3"' : ''}>⬇️</button>
@@ -1784,7 +1840,7 @@
             listEl.innerHTML = available.map(e => `
                 <label class="picker-item">
                     <input type="checkbox" value="${e.id}" ${pickerSelectedIds.has(e.id) ? 'checked' : ''} onchange="togglePickerSelection('${e.id}', this.checked)">
-                    <span>${e.name}</span>
+                    <span style="flex: 1; min-width: 0; word-break: break-word;">${e.name}</span>
                 </label>
             `).join('');
         }
@@ -2161,8 +2217,9 @@
 
             const typeLabels = { cumulative: 'Cumulative', gym_auto: 'Auto · Gym Workouts', daily: 'Daily Checklist' };
 
-            document.getElementById('challenge-detail-tasks').innerHTML = challenge.tasks.map(task => {
-                const personBlocks = PEOPLE.map(person => {
+            // Grouped by person first, with every task listed underneath their name.
+            document.getElementById('challenge-detail-tasks').innerHTML = PEOPLE.map(person => {
+                const taskRows = challenge.tasks.map(task => {
                     const prog = getTaskProgress(challenge, task, person);
                     const progressText = task.type === 'daily'
                         ? `${prog.current} / ${prog.target} days`
@@ -2190,11 +2247,12 @@
                     }
 
                     return `
-                        <div class="task-person-block">
-                            <div class="task-person-block-header person-${person.toLowerCase()}">
-                                <span>${person}</span>
-                                <span>${progressText}</span>
+                        <div class="person-task-row">
+                            <div class="person-task-row-header">
+                                <span>${task.title}</span>
+                                <span class="task-type-badge">${typeLabels[task.type]}</span>
                             </div>
+                            <div style="font-size:0.78rem; color:var(--text-secondary); margin-bottom:3px;">${progressText}</div>
                             <div class="mini-progress-container">
                                 <div class="mini-progress-bar person-${person.toLowerCase()} ${prog.isComplete ? 'goal-hit' : ''}" style="width:${prog.pct}%"></div>
                             </div>
@@ -2204,12 +2262,9 @@
                 }).join('');
 
                 return `
-                    <div class="task-card">
-                        <div class="task-card-header">
-                            <strong>${task.title}</strong>
-                            <span class="task-type-badge">${typeLabels[task.type]}</span>
-                        </div>
-                        ${personBlocks}
+                    <div class="person-section">
+                        <h3 class="person-section-header person-${person.toLowerCase()}">${person}</h3>
+                        ${taskRows}
                     </div>
                 `;
             }).join('');
