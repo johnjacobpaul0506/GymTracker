@@ -351,10 +351,124 @@
             margin-bottom: 0.5rem;
         }
 
-        /* Single per-exercise save action (replaces the old two-button row) */
+        /* ─── Collapsible exercise card ─────────────────────────── */
+        .ex-card { padding: 0; overflow: hidden; }
+
+        /* Compact always-visible header row */
+        .ex-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.85rem 0.9rem;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .ex-num {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            width: 18px;
+            text-align: right;
+        }
+        .ex-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+        .ex-saved-indicators { display: flex; gap: 4px; flex-shrink: 0; }
+        .saved-dot {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            font-size: 0.62rem;
+            font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            background-color: var(--surface-light);
+            color: var(--text-secondary);
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+        .saved-dot.active.person-john { background-color: var(--primary-color); color: #000; }
+        .saved-dot.active.person-emily { background-color: var(--secondary-color); color: #000; }
+
+        .ex-card-chevron {
+            font-size: 1rem; color: var(--text-secondary);
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+        .ex-card.expanded .ex-card-chevron { transform: rotate(90deg); }
+
+        /* Body hidden by default, animates open on expand */
+        .ex-card-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.28s ease;
+            padding: 0 0.9rem;
+        }
+        .ex-card.expanded .ex-card-body {
+            max-height: 700px;
+            padding-bottom: 0.9rem;
+        }
+
+        /* Thin divider between header and body when expanded */
+        .ex-card.expanded .ex-card-header {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* PB badge inside the body */
+        .ex-pb-badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            background: var(--surface-light);
+            padding: 2px 7px;
+            border-radius: 4px;
+            margin-top: 0.6rem;
+        }
+        .ex-history-link {
+            display: block;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            color: var(--secondary-color);
+            text-decoration: underline;
+        }
+        .ex-first-time {
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        /* ─── Per-card person mini toggle ───────────────────────── */
+        .card-person-toggle {
+            display: flex;
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 3px;
+            margin: 0.75rem 0 0.6rem;
+        }
+        .card-person-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            padding: 0.45rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .card-person-btn.active.person-john { background-color: var(--primary-color); color: #000; }
+        .card-person-btn.active.person-emily { background-color: var(--secondary-color); color: #000; }
+
+        /* ─── Save progress button ───────────────────────────────── */
         .btn-save-progress {
             width: 100%;
-            padding: 0.7rem;
+            padding: 0.65rem;
             border-radius: 8px;
             border: none;
             font-size: 0.88rem;
@@ -362,46 +476,32 @@
             cursor: pointer;
             transition: var(--transition);
             color: #000;
+            margin-top: 0.75rem;
         }
         .btn-save-progress.person-john { background-color: var(--primary-color); }
         .btn-save-progress.person-emily { background-color: var(--secondary-color); }
         .btn-save-progress:active { opacity: 0.8; }
         .btn-save-progress.just-saved { background-color: var(--success-color) !important; color: #fff !important; }
 
-        /* Grid-aligned set column headers — shares .set-row's exact column
-           widths so labels line up precisely with the inputs below, instead
-           of being faked with guessed padding. */
+        /* ─── Set column headers ─────────────────────────────────── */
         .set-row-header {
             display: grid;
             grid-template-columns: 40px 1fr 1fr 40px;
             gap: 0.5rem;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--text-secondary);
-            margin: 0.85rem 0 0.35rem;
+            margin: 0.4rem 0 0.3rem;
         }
 
-        /* Saved-state feedback so progress through a long exercise list is
-           visible at a glance */
+        /* Saved state: green left border is enough; no badge needed */
         .ex-card.saved { border-left: 3px solid var(--success-color); }
-        .ex-card-saved-badge {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--success-color);
-            background-color: rgba(3, 218, 198, 0.12);
-            padding: 2px 8px;
-            border-radius: 4px;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
 
         .workout-progress-indicator {
             font-size: 0.78rem;
             color: var(--text-secondary);
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
         }
 
-        /* Keeps the final save action reachable without scrolling all the
-           way past a long exercise list, without overlapping the bottom nav */
         .sticky-save-bar {
             position: sticky;
             bottom: calc(var(--nav-height) + 12px);
@@ -409,9 +509,7 @@
             padding-top: 0.5rem;
             z-index: 5;
         }
-        .sticky-save-bar .btn {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-        }
+        .sticky-save-bar .btn { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
 
         /* =========================================
            EXERCISE PICKER MODAL
@@ -558,10 +656,13 @@
              WORKOUT VIEW
              ========================================= -->
         <section id="view-workout" class="view">
-            <p class="workout-person-label">Who's logging?</p>
-            <div class="person-toggle" id="workout-person-toggle">
-                <button type="button" class="person-toggle-btn person-john" onclick="setSelectedLogPerson('John')">John</button>
-                <button type="button" class="person-toggle-btn person-emily" onclick="setSelectedLogPerson('Emily')">Emily</button>
+            <!-- Shown on setup screen only; hidden once exercise cards are loaded -->
+            <div id="workout-person-section">
+                <p class="workout-person-label">Who's logging today?</p>
+                <div class="person-toggle" id="workout-person-toggle">
+                    <button type="button" class="person-toggle-btn person-john" onclick="setSelectedLogPerson('John')">John</button>
+                    <button type="button" class="person-toggle-btn person-emily" onclick="setSelectedLogPerson('Emily')">Emily</button>
+                </div>
             </div>
 
             <div id="workout-selection">
@@ -1281,15 +1382,6 @@
 
         function setSelectedLogPerson(person) {
             if (person === currentLogPerson) return;
-
-            // Mid-workout, switching reloads every card with the new person's
-            // data — confirm first so nobody loses unsaved entries silently.
-            if (activeWorkoutData) {
-                if (!confirm(`Switch to ${person}? This reloads the exercise list with their data — anything typed but not yet saved on this screen will be lost.`)) {
-                    return;
-                }
-            }
-
             currentLogPerson = person;
             try {
                 localStorage.setItem('gym_last_person', person);
@@ -1297,12 +1389,31 @@
                 console.warn('Could not save last-used person to localStorage:', e);
             }
             renderPersonToggle();
+        }
 
-            // Rebuild the exercise list in place so prefill/PB/saved-state all
-            // reflect the newly selected person immediately, not the old one.
-            if (activeWorkoutData) {
-                startWorkout();
+        function setCardPerson(exId, person) {
+            const card = document.querySelector(`.ex-card[data-ex-id="${exId}"]`);
+            if (!card) return;
+            card.dataset.cardPerson = person;
+
+            // Update the mini toggle within this card
+            card.querySelectorAll('.card-person-btn').forEach(btn => {
+                const isJohn = btn.classList.contains('person-john');
+                btn.classList.toggle('active', (isJohn && person === 'John') || (!isJohn && person === 'Emily'));
+            });
+
+            // Update save button color and label
+            const saveBtn = card.querySelector('.btn-save-progress');
+            if (saveBtn) {
+                saveBtn.className = `btn-save-progress person-${person.toLowerCase()}`;
+                saveBtn.textContent = `💾 Save Progress for ${person}`;
             }
+        }
+
+        function toggleCard(exId) {
+            const card = document.querySelector(`.ex-card[data-ex-id="${exId}"]`);
+            if (!card) return;
+            card.classList.toggle('expanded');
         }
 
         function renderPersonToggle() {
@@ -1361,12 +1472,11 @@
             return setsList;
         }
 
-        // Saves just ONE exercise's currently-entered sets for whoever is
-        // currently selected, without needing to finish the rest of the workout.
         function saveExerciseProgress(exId, exName, btnEl) {
             if (!activeWorkoutData) return;
             const card = document.querySelector(`.ex-card[data-ex-id="${exId}"]`);
             if (!card) return;
+            const person = card.dataset.cardPerson || 'John';
             const setsList = collectSetsFromCard(card);
 
             if (setsList.length === 0) {
@@ -1375,19 +1485,23 @@
             }
 
             const workoutDateMs = getWorkoutDateMs();
-            const entry = findOrCreateHistoryEntry(workoutDateMs, activeWorkoutData.moduleId, activeWorkoutData.moduleName, activeWorkoutData.dayId, activeWorkoutData.dayName, currentLogPerson);
+            const entry = findOrCreateHistoryEntry(workoutDateMs, activeWorkoutData.moduleId, activeWorkoutData.moduleName, activeWorkoutData.dayId, activeWorkoutData.dayName, person);
             upsertExerciseInEntry(entry, { id: exId, name: exName, setsList });
             saveData();
 
-            showToast(`Saved "${exName}" for ${currentLogPerson}`);
+            // Colour the saved-dot for this person in the card header
+            const dot = card.querySelector(`.saved-dot.person-${person.toLowerCase()}`);
+            if (dot) dot.classList.add('active');
+
             markCardSaved(card, true);
+            showToast(`Saved "${exName}" for ${person}`);
 
             if (btnEl) {
-                const original = btnEl.innerText;
-                btnEl.innerText = '✓ Saved';
+                const original = btnEl.textContent;
+                btnEl.textContent = '✓ Saved';
                 btnEl.classList.add('just-saved');
                 setTimeout(() => {
-                    btnEl.innerText = original;
+                    btnEl.textContent = original;
                     btnEl.classList.remove('just-saved');
                 }, 1500);
             }
@@ -1395,22 +1509,8 @@
             updateWorkoutProgressIndicator();
         }
 
-        // Visually flags a card as logged for the current person (a left-border
-        // accent + small checkmark), so progress through a long exercise list
-        // is visible at a glance without re-reading every Save button.
         function markCardSaved(card, isSaved) {
             card.classList.toggle('saved', isSaved);
-            let badge = card.querySelector('.ex-card-saved-badge');
-            if (isSaved) {
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'ex-card-saved-badge';
-                    badge.innerText = '✓ Saved';
-                    card.querySelector('.card-header').appendChild(badge);
-                }
-            } else if (badge) {
-                badge.remove();
-            }
         }
 
         function updateWorkoutProgressIndicator() {
@@ -1418,7 +1518,7 @@
             if (!el || !activeWorkoutData) return;
             const total = document.querySelectorAll('.ex-card').length;
             const saved = document.querySelectorAll('.ex-card.saved').length;
-            el.textContent = total > 0 ? `${saved} of ${total} logged for ${currentLogPerson}` : '';
+            el.textContent = total > 0 ? `${saved} of ${total} exercises logged` : '';
         }
 
         function renderWorkoutSetup() {
@@ -1428,6 +1528,7 @@
             
             document.getElementById('workout-selection').style.display = 'block';
             document.getElementById('active-workout').style.display = 'none';
+            document.getElementById('workout-person-section').style.display = 'block';
             renderPersonToggle();
 
             if (appData.modules.length === 0) {
@@ -1558,75 +1659,85 @@
                 exercises: []
             };
 
+            // Hide global person toggle — each exercise card has its own
+            document.getElementById('workout-person-section').style.display = 'none';
             document.getElementById('workout-selection').style.display = 'none';
             document.getElementById('active-workout').style.display = 'block';
-            document.getElementById('active-workout-title').innerText = `${mod.name} - ${day.name}`;
-            
-            // Set date picker to today
+            document.getElementById('active-workout-title').innerText = `${day.name}`;
             document.getElementById('workout-date').valueAsDate = new Date();
-            renderPersonToggle();
 
             const workoutDateMs = getWorkoutDateMs();
-            const todaysEntry = findHistoryEntryReadOnly(workoutDateMs, day.id, currentLogPerson);
+            const todaysJohnEntry  = findHistoryEntryReadOnly(workoutDateMs, day.id, 'John');
+            const todaysEmilyEntry = findHistoryEntryReadOnly(workoutDateMs, day.id, 'Emily');
 
             const listContainer = document.getElementById('workout-exercise-list');
             listContainer.innerHTML = '';
 
             day.exercises.forEach((exRef, index) => {
                 const ex = appData.exercises.find(e => e.id === exRef.id) || exRef;
+                // Pre-fill & PB are based on whoever is currently set as default
                 const stats = getExerciseHistoryStats(ex.id, currentLogPerson);
                 
+                const savedForJohn  = !!(todaysJohnEntry  && todaysJohnEntry.exercises.some(e => e.id === ex.id));
+                const savedForEmily = !!(todaysEmilyEntry && todaysEmilyEntry.exercises.some(e => e.id === ex.id));
+                const isSaved = savedForJohn || savedForEmily;
+
                 let lastDateStr = '';
                 if (stats.lastDate) {
                     const d = new Date(stats.lastDate);
-                    lastDateStr = `${currentLogPerson}'s last on ${d.getDate()}/${d.toLocaleString('default', {month:'short'})}/${d.getFullYear().toString().substr(-2)}`;
+                    lastDateStr = `Last (${currentLogPerson}): ${d.getDate()}/${d.toLocaleString('default', {month:'short'})}/${d.getFullYear().toString().substr(-2)}`;
                 }
 
-                const alreadySavedToday = !!(todaysEntry && todaysEntry.exercises.some(e => e.id === ex.id));
-
                 const card = document.createElement('div');
-                card.className = 'card mb-2 ex-card' + (alreadySavedToday ? ' saved' : '');
+                card.className = 'card mb-2 ex-card' + (isSaved ? ' saved' : '');
                 card.dataset.exId = ex.id;
                 card.dataset.exName = ex.name;
+                card.dataset.cardPerson = currentLogPerson;
                 card.innerHTML = `
-                    <div class="card-header" style="margin-bottom: 0; gap: 0.5rem; flex-wrap: wrap;">
-                        <h3 class="text-primary" style="flex: 1; min-width: 0; word-break: break-word;">${index + 1}. ${ex.name}</h3>
-                        ${stats.pb > 0 ? `<span style="font-size:0.8rem; background: var(--surface-light); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; white-space: nowrap;">🏆 ${currentLogPerson}'s PB: ${stats.pb}</span>` : ''}
-                        ${alreadySavedToday ? `<span class="ex-card-saved-badge">✓ Saved</span>` : ''}
+                    <!-- Always-visible compact header — tap to expand -->
+                    <div class="ex-card-header" onclick="toggleCard('${ex.id}')">
+                        <span class="ex-num">${index + 1}</span>
+                        <span class="ex-name">${ex.name}</span>
+                        <div class="ex-saved-indicators">
+                            <span class="saved-dot person-john${savedForJohn ? ' active' : ''}" title="John">J</span>
+                            <span class="saved-dot person-emily${savedForEmily ? ' active' : ''}" title="Emily">E</span>
+                        </div>
+                        <span class="ex-card-chevron">›</span>
                     </div>
-                    
-                    ${stats.lastSession ? `
-                    <a href="javascript:void(0)" onclick="showExerciseHistory('${ex.id}', '${ex.name}')" style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--secondary-color); text-decoration: underline;">${lastDateStr} (view all history)</a>
-                    ` : '<p style="font-size: 0.8rem; margin-top: 0.5rem;">First time performing this exercise.</p>'}
-                    
-                    <div class="set-row-header">
-                        <div></div>
-                        <div>Weight (kg)</div>
-                        <div>Reps</div>
-                        <div></div>
-                    </div>
-                    
-                    <div id="sets-container-${ex.id}">
-                        <!-- Sets will be injected here -->
-                    </div>
-                    
-                    <button class="btn btn-secondary mt-1" style="font-size: 0.8rem; padding: 0.5rem;" onclick="addSetRow('${ex.id}')">+ Add Set</button>
 
-                    <button type="button" class="btn-save-progress person-${currentLogPerson.toLowerCase()} mt-2" onclick="saveExerciseProgress(this.closest('.ex-card').dataset.exId, this.closest('.ex-card').dataset.exName, this)">💾 Save Progress for ${currentLogPerson}</button>
+                    <!-- Expandable body -->
+                    <div class="ex-card-body">
+                        ${stats.pb > 0 ? `<span class="ex-pb-badge">🏆 ${currentLogPerson}'s PB: ${stats.pb} kg</span>` : ''}
+
+                        ${stats.lastSession
+                            ? `<a href="javascript:void(0)" onclick="showExerciseHistory('${ex.id}', '${ex.name}')" class="ex-history-link">${lastDateStr} (view full history)</a>`
+                            : `<p class="ex-first-time">First time — no history yet.</p>`
+                        }
+
+                        <div class="card-person-toggle">
+                            <button type="button" class="card-person-btn person-john${currentLogPerson === 'John' ? ' active' : ''}" onclick="setCardPerson('${ex.id}', 'John')">John</button>
+                            <button type="button" class="card-person-btn person-emily${currentLogPerson === 'Emily' ? ' active' : ''}" onclick="setCardPerson('${ex.id}', 'Emily')">Emily</button>
+                        </div>
+
+                        <div class="set-row-header">
+                            <div></div><div>Weight (kg)</div><div>Reps</div><div></div>
+                        </div>
+                        <div id="sets-container-${ex.id}"></div>
+
+                        <button class="btn btn-secondary mt-1" style="font-size:0.8rem; padding:0.5rem;" onclick="addSetRow('${ex.id}')">+ Add Set</button>
+
+                        <button type="button" class="btn-save-progress person-${currentLogPerson.toLowerCase()}" onclick="saveExerciseProgress(this.closest('.ex-card').dataset.exId, this.closest('.ex-card').dataset.exName, this)">💾 Save Progress for ${currentLogPerson}</button>
+                    </div>
                 `;
                 listContainer.appendChild(card);
                 
-                // Pre-fill sets based on last session
+                // Pre-fill sets (done at render time, visible once card is tapped open)
                 if (stats.lastSession && stats.lastSession.setsList) {
-                    stats.lastSession.setsList.forEach(s => {
-                        window.addSetRow(ex.id, s.weight, s.reps);
-                    });
+                    stats.lastSession.setsList.forEach(s => window.addSetRow(ex.id, s.weight, s.reps));
                 } else if (stats.lastSession && stats.lastSession.weight) {
-                    // Legacy migration fallback
                     let num = parseInt(stats.lastSession.sets) || 1;
-                    for(let i=0; i<num; i++) window.addSetRow(ex.id, stats.lastSession.weight, stats.lastSession.reps);
+                    for (let i = 0; i < num; i++) window.addSetRow(ex.id, stats.lastSession.weight, stats.lastSession.reps);
                 } else {
-                    // Empty initial set
                     window.addSetRow(ex.id);
                 }
             });
@@ -1644,34 +1755,40 @@
         function saveWorkout() {
             if (!activeWorkoutData) return;
 
-            const sessionExercises = [];
+            // Group exercises by whichever person is selected on each card —
+            // allows John and Emily to each save different exercises in one tap.
+            const byPerson = {};
+            PEOPLE.forEach(p => byPerson[p] = []);
 
             const exCards = document.querySelectorAll('.ex-card');
             exCards.forEach(card => {
-                const exId = card.dataset.exId;
-                const exName = card.dataset.exName;
                 const setsList = collectSetsFromCard(card);
-                if (setsList.length > 0) {
-                    sessionExercises.push({ id: exId, name: exName, setsList });
-                    markCardSaved(card, true);
-                }
+                if (setsList.length === 0) return;
+                const person = card.dataset.cardPerson || 'John';
+                byPerson[person].push({ id: card.dataset.exId, name: card.dataset.exName, setsList });
+                markCardSaved(card, true);
+                const dot = card.querySelector(`.saved-dot.person-${person.toLowerCase()}`);
+                if (dot) dot.classList.add('active');
             });
 
-            if (sessionExercises.length === 0) {
+            const totalSaved = PEOPLE.reduce((n, p) => n + byPerson[p].length, 0);
+            if (totalSaved === 0) {
                 alert("Please log at least one exercise set to save the workout.");
                 return;
             }
 
-            // Upsert into today's entry for the currently-selected person, so this
-            // doesn't create a duplicate if some exercises were already saved
-            // individually via each card's "Save Progress" button.
             const workoutDateMs = getWorkoutDateMs();
-            const entry = findOrCreateHistoryEntry(workoutDateMs, activeWorkoutData.moduleId, activeWorkoutData.moduleName, activeWorkoutData.dayId, activeWorkoutData.dayName, currentLogPerson);
-            sessionExercises.forEach(ex => upsertExerciseInEntry(entry, ex));
+            PEOPLE.forEach(person => {
+                if (byPerson[person].length === 0) return;
+                const entry = findOrCreateHistoryEntry(workoutDateMs, activeWorkoutData.moduleId, activeWorkoutData.moduleName, activeWorkoutData.dayId, activeWorkoutData.dayName, person);
+                byPerson[person].forEach(ex => upsertExerciseInEntry(entry, ex));
+            });
+
             saveData();
             updateWorkoutProgressIndicator();
 
-            showToast(`Workout for the day saved (${currentLogPerson})!`);
+            const personsSaved = PEOPLE.filter(p => byPerson[p].length > 0).join(' & ');
+            showToast(`Workout saved for ${personsSaved}!`);
             activeWorkoutData = null;
             navTo('dashboard');
         }
