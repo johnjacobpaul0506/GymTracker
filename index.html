@@ -286,6 +286,25 @@
             transition: var(--transition);
         }
         .modal-overlay.active { opacity: 1; visibility: visible; }
+
+        /* Login overlay */
+        .login-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--bg-color);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 3000; padding: 1.5rem; text-align: center;
+        }
+        .login-overlay.hidden { display: none; }
+        .login-card { width: 100%; max-width: 360px; }
+        .login-people { display: flex; gap: 1rem; }
+        .login-person-btn {
+            flex: 1; padding: 1.25rem 0.5rem; font-size: 1.1rem; font-weight: 600;
+            border-radius: var(--border-radius); border: 2px solid var(--border-color);
+            background: var(--surface-color); color: var(--text-primary); cursor: pointer;
+            transition: var(--transition);
+        }
+        .login-person-btn.person-john:active, .login-person-btn.person-john:hover { border-color: var(--primary-color); color: var(--primary-color); }
+        .login-person-btn.person-emily:active, .login-person-btn.person-emily:hover { border-color: var(--secondary-color); color: var(--secondary-color); }
         .modal {
             background: var(--surface-color);
             width: 90%;
@@ -618,8 +637,26 @@
 </head>
 <body>
 
+    <!-- Login / person picker (shown until a person is chosen) -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <div style="font-size:3rem; margin-bottom:0.5rem;">🏋️</div>
+            <h1 style="margin-bottom:0.25rem;">Gym Progress</h1>
+            <p class="mb-2">Who's logging in?</p>
+            <div id="login-status" class="mb-2" style="font-size:0.78rem; min-height:1.1rem;"></div>
+            <div class="login-people">
+                <button type="button" class="login-person-btn person-john" onclick="loginAs('John')">John</button>
+                <button type="button" class="login-person-btn person-emily" onclick="loginAs('Emily')">Emily</button>
+            </div>
+        </div>
+    </div>
+
     <header>
-        <h1 id="header-title" class="text-center">Gym Progress</h1>
+        <div class="flex justify-between align-center" style="gap:0.5rem;">
+            <span style="width:70px;"></span>
+            <h1 id="header-title" class="text-center" style="margin:0; flex:1;">Gym Progress</h1>
+            <button id="header-switch-user" class="btn-icon" style="width:70px; font-size:0.72rem; white-space:nowrap;" onclick="switchUser()" title="Switch user">🔄 <span id="header-user-name"></span></button>
+        </div>
     </header>
 
     <main class="container" id="app">
@@ -904,6 +941,18 @@
         </div>
     </div>
 
+    <!-- Workout History Detail Modal (opened from dashboard calendar) -->
+    <div id="history-detail-overlay" class="modal-overlay" onclick="if(event.target===this) closeHistoryDetail()">
+        <div class="modal large-modal">
+            <div class="flex justify-between align-center mb-1">
+                <h3 id="history-detail-title">Workout</h3>
+                <button class="btn-icon" onclick="closeHistoryDetail()">✖</button>
+            </div>
+            <p id="history-detail-date" class="mb-2"></p>
+            <div id="history-detail-body"></div>
+        </div>
+    </div>
+
     <!-- Challenge Detail Modal -->
     <div id="challenge-detail-overlay" class="modal-overlay">
         <div class="modal large-modal">
@@ -949,7 +998,7 @@
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
                     auth: { persistSession: false, autoRefreshToken: false }
                 });
-                console.log('Supabase client initialized (not yet used for storage).');
+                console.log('Supabase client initialized.');
             }
         } catch (e) {
             // This runs at script-load time, outside any other safety net — if it
@@ -961,7 +1010,18 @@
         /* -----------------------------------------
            1. STATE MANAGEMENT & LOCAL STORAGE
            ----------------------------------------- */
+        // Legacy single-blob key (pre per-user). Read once for one-time migration.
         const STORAGE_KEY = 'gym_progress_tracker_data';
+
+        // The currently logged-in person. Set via the login screen. All per-person
+        // data (history, challenge check-ins/logs) is loaded/saved for this user.
+        let currentUser = null;
+        try { currentUser = localStorage.getItem('gym_current_user') || null; } catch (e) {}
+
+        // Per-person local cache key (offline fallback so the app still opens if
+        // the network / Supabase is unreachable). Shared data + this user's
+        // per-person data get cached together under their own key.
+        function cacheKeyFor(person) { return 'gym_cache_' + person; }
 
         // The people whose progress this app tracks
         const PEOPLE = ['John', 'Emily'];
@@ -977,12 +1037,14 @@
             "Smith Shoulder Press", "Machine Shoulder Press", "Dumbell Lat Raises", "Cable Lat Raises",
             "Bicep Cable Curls", "Forearm Curls", "Hammer Curls",
             "Pull ups", "Lat Pull Down", "Machine Cable Rows", "Face Pull", "Single Hand Lat Pull", "Supported Cable Rows",
-            "Leg Press", "Machine Leg Press", "Calf Raise", "Leg Curls", "Leg Extension"
+            "Leg Press", "Machine Leg Press", "Calf Raise", "Leg Curls", "Leg Extension",
+            "Treadmill", "Cycling", "Rowing Machine", "Stair Climber", "Elliptical"
         ];
-        // Index ranges within DEFAULT_EXERCISES for the starter Push/Pull/Legs split
+        // Index ranges within DEFAULT_EXERCISES for the starter Push/Pull/Legs/Cardio split
         const DEFAULT_PUSH_IDX = [0,1,2,3,4,5,6,7,8,9];
         const DEFAULT_PULL_IDX = [10,11,12,13,14,15,16,17,18];
         const DEFAULT_LEG_IDX  = [19,20,21,22,23];
+        const DEFAULT_CARDIO_IDX = [24,25,26,27,28];
 
         // Default Data Structure
         let appData = {
@@ -1000,99 +1062,251 @@
         // ever seeded — which looks exactly like "exercises just don't show up".
         let storageAvailable = true;
 
-        function safeGetStorage() {
+        // Tracks whether the last Supabase sync succeeded (surfaced in Settings).
+        let cloudAvailable = false;
+
+        // ---- Per-person local cache (offline fallback) ----
+        function readCache(person) {
             try {
-                return localStorage.getItem(STORAGE_KEY);
-            } catch (e) {
-                storageAvailable = false;
-                console.warn('localStorage is not accessible in this context:', e);
-                return null;
-            }
+                const raw = localStorage.getItem(cacheKeyFor(person));
+                return raw ? JSON.parse(raw) : null;
+            } catch (e) { storageAvailable = false; return null; }
+        }
+        function writeCache(person, data) {
+            try { localStorage.setItem(cacheKeyFor(person), JSON.stringify(data)); storageAvailable = true; }
+            catch (e) { storageAvailable = false; }
         }
 
-        function loadData() {
-            const stored = safeGetStorage();
-            if (stored) {
-                try {
-                    appData = JSON.parse(stored);
-                } catch (e) {
-                    console.error("Failed to parse local storage data.");
-                }
-            }
-            
-            // Migration for unique global exercises and new sets structure
-            if (!appData.exercises) {
-                appData.exercises = [];
-                let exMap = {};
-                
-                // Build global exercises
-                appData.modules.forEach(m => {
-                    m.days.forEach(d => {
-                        d.exercises.forEach(ex => {
-                            let nameKey = ex.name.toLowerCase().trim();
-                            if (!exMap[nameKey]) {
-                                let newId = generateId();
-                                exMap[nameKey] = newId;
-                                appData.exercises.push({ id: newId, name: ex.name });
-                            }
-                            ex.id = exMap[nameKey]; // update to global ID
-                        });
-                    });
-                });
-                
-                // Migrate history
-                appData.history.forEach(h => {
-                    h.exercises.forEach(ex => {
-                        let nameKey = ex.name.toLowerCase().trim();
-                        if (exMap[nameKey]) ex.id = exMap[nameKey];
-                        
-                        if (!ex.setsList && (ex.weight || ex.sets || ex.reps)) {
-                            // Convert old W/S/R to new setsList
-                            ex.setsList = [];
-                            let numSets = parseInt(ex.sets) || 1;
-                            for (let i=0; i<numSets; i++) {
-                                ex.setsList.push({ weight: ex.weight || '', reps: ex.reps || '' });
-                            }
-                        }
-                    });
-                });
-                saveData();
-            }
-
-            // Migration: every history entry needs an owner. Existing entries pre-date
-            // person tracking, so attribute them to John (the original sole logger).
-            let needsSave = false;
+        // ---- Normalise / migrate an appData object in memory ----
+        function normaliseAppData() {
+            if (!appData.modules) appData.modules = [];
+            if (!appData.exercises) appData.exercises = [];
+            if (!appData.history) appData.history = [];
+            if (!appData.challenges) appData.challenges = [];
+            if (typeof appData.weeklyGoal !== 'number' || appData.weeklyGoal <= 0) appData.weeklyGoal = DEFAULT_WEEKLY_GOAL;
             appData.history.forEach(h => {
-                if (!h.person) { h.person = 'John'; needsSave = true; }
+                if (!h.person) h.person = 'John';
+                (h.exercises || []).forEach(ex => {
+                    if (!ex.setsList && (ex.weight || ex.sets || ex.reps)) {
+                        ex.setsList = [];
+                        let numSets = parseInt(ex.sets) || 1;
+                        for (let i = 0; i < numSets; i++) ex.setsList.push({ weight: ex.weight || '', reps: ex.reps || '' });
+                    }
+                });
             });
-
-            // Migration: weekly goal & challenges may not exist on older saves
-            if (typeof appData.weeklyGoal !== 'number' || appData.weeklyGoal <= 0) {
-                appData.weeklyGoal = DEFAULT_WEEKLY_GOAL;
-                needsSave = true;
-            }
-            if (!appData.challenges) {
-                appData.challenges = [];
-                needsSave = true;
-            }
-
-            if (needsSave) saveData();
         }
 
-        function saveData() {
+        /* Build the flat Supabase rows from the nested appData shape.
+           Shared tables (modules/days/exercises/challenges/tasks/settings) are
+           written wholesale; per-person tables carry currentUser as `person`. */
+        function isoDate(ms) { return new Date(ms).toISOString().slice(0, 10); }
+
+        // ---- Load shared data + this person's data from Supabase into appData ----
+        async function loadFromCloud(person) {
+            if (!supabaseClient) throw new Error('no client');
+            const q = supabaseClient;
+
+            // History + challenge progress are fetched for ALL people (small data),
+            // so the Challenges page can show John's and Emily's progress side by
+            // side and gym_auto counts stay accurate regardless of who's logged in.
+            const [mods, days, dayEx, exs, settings, hist, chals, tasks, logs, checkins] = await Promise.all([
+                q.from('modules').select('*').order('sort_order'),
+                q.from('workout_days').select('*').order('sort_order'),
+                q.from('day_exercises').select('*').order('sort_order'),
+                q.from('exercises').select('*'),
+                q.from('app_settings').select('*'),
+                q.from('workout_history').select('*'),
+                q.from('challenges').select('*'),
+                q.from('challenge_tasks').select('*').order('sort_order'),
+                q.from('challenge_progress_logs').select('*'),
+                q.from('challenge_daily_checkins').select('*')
+            ]);
+
+            const firstErr = [mods, days, dayEx, exs, settings, hist, chals, tasks, logs, checkins].find(r => r.error);
+            if (firstErr && firstErr.error) throw firstErr.error;
+
+            const data = { modules: [], exercises: [], history: [], challenges: [], weeklyGoal: DEFAULT_WEEKLY_GOAL };
+
+            // Exercises library
+            data.exercises = (exs.data || []).map(e => ({ id: e.id, name: e.name }));
+            const exName = {}; data.exercises.forEach(e => exName[e.id] = e.name);
+
+            // Modules -> days -> exercises
+            const daysByModule = {}; (days.data || []).forEach(d => { (daysByModule[d.module_id] = daysByModule[d.module_id] || []).push(d); });
+            const exByDay = {}; (dayEx.data || []).forEach(de => { (exByDay[de.day_id] = exByDay[de.day_id] || []).push(de); });
+            data.modules = (mods.data || []).map(m => ({
+                id: m.id, name: m.name,
+                days: (daysByModule[m.id] || []).map(d => ({
+                    id: d.id, name: d.name,
+                    exercises: (exByDay[d.id] || []).map(de => ({ id: de.exercise_id, name: exName[de.exercise_id] || '(unknown)' }))
+                }))
+            }));
+
+            // Weekly goal from app_settings
+            const goalRow = (settings.data || []).find(s => s.key === 'weeklyGoal');
+            if (goalRow) { const v = typeof goalRow.value === 'object' ? goalRow.value.value : goalRow.value; if (Number(v) > 0) data.weeklyGoal = Number(v); }
+
+            // Per-person history
+            data.history = (hist.data || []).map(h => ({
+                id: h.id, person: h.person, date: new Date(h.workout_date).getTime(),
+                moduleId: h.module_id, moduleName: h.module_name, dayId: h.day_id, dayName: h.day_name,
+                exercises: h.exercises || []
+            }));
+
+            // Challenges -> tasks, with this person's logs/checkins folded into task.progress
+            const tasksByChallenge = {}; (tasks.data || []).forEach(t => { (tasksByChallenge[t.challenge_id] = tasksByChallenge[t.challenge_id] || []).push(t); });
+            const logsByTask = {}; (logs.data || []).forEach(l => { (logsByTask[l.task_id] = logsByTask[l.task_id] || []).push(l); });
+            const checkinsByTask = {}; (checkins.data || []).forEach(c => { (checkinsByTask[c.task_id] = checkinsByTask[c.task_id] || []).push(c); });
+            data.challenges = (chals.data || []).map(c => ({
+                id: c.id, name: c.name,
+                startDate: new Date(c.start_date).getTime(),
+                endDate: c.end_date ? new Date(c.end_date).getTime() + (MS_PER_DAY - 1) : computeChallengeEndDate(new Date(c.start_date).getTime(), c.duration_weeks),
+                durationWeeks: c.duration_weeks,
+                tasks: (tasksByChallenge[c.id] || []).map(t => {
+                    const progress = {};
+                    PEOPLE.forEach(pp => {
+                        progress[pp] = {
+                            logs: (logsByTask[t.id] || []).filter(l => l.person === pp).map(l => ({ id: l.id, amount: Number(l.amount), date: new Date(l.logged_at).getTime() })),
+                            days: (checkinsByTask[t.id] || []).filter(ci => ci.person === pp).map(ci => new Date(ci.checkin_date).toDateString())
+                        };
+                    });
+                    return { id: t.id, title: t.title, type: t.type, target: Number(t.target), unit: t.unit || '', progress };
+                })
+            }));
+
+            return data;
+        }
+
+        // Public loader used by initApp: pulls this person's data, falls back to cache.
+        async function loadData() {
+            const person = currentUser || 'John';
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
-                storageAvailable = true;
+                appData = await loadFromCloud(person);
+                cloudAvailable = true;
+                normaliseAppData();
+                writeCache(person, appData);
             } catch (e) {
-                if (storageAvailable) {
-                    // Only surface this once per session, not on every keystroke-triggered save.
-                    storageAvailable = false;
-                    console.warn('Could not write to localStorage — changes will not persist:', e);
-                    if (typeof showToast === 'function') {
-                        showToast('⚠️ Storage unavailable on this device — changes won\'t be saved');
-                    }
-                }
+                console.warn('Cloud load failed, using local cache:', e);
+                cloudAvailable = false;
+                const cached = readCache(person);
+                if (cached) appData = cached;
+                normaliseAppData();
             }
+        }
+
+        /* saveData writes the current appData to Supabase and caches locally.
+           Kept synchronous-looking for existing callers: it kicks off an async
+           cloud sync (fire-and-forget) and always updates the local cache first
+           so nothing is lost if the network blips. */
+        function saveData() {
+            const person = currentUser || 'John';
+            writeCache(person, appData);
+            syncToCloud(person).catch(e => console.warn('Cloud sync failed (cached locally):', e));
+        }
+
+        async function syncToCloud(person) {
+            if (!supabaseClient) { cloudAvailable = false; return; }
+            const q = supabaseClient;
+            const errs = [];
+
+            // --- Shared: exercises ---
+            if (appData.exercises.length) {
+                const { error } = await q.from('exercises').upsert(appData.exercises.map(e => ({ id: e.id, name: e.name })));
+                if (error) errs.push(error);
+            }
+
+            // --- Shared: modules / days / day_exercises ---
+            const moduleRows = [], dayRows = [], dayExRows = [];
+            appData.modules.forEach((m, mi) => {
+                moduleRows.push({ id: m.id, name: m.name, sort_order: mi });
+                m.days.forEach((d, di) => {
+                    dayRows.push({ id: d.id, module_id: m.id, name: d.name, sort_order: di });
+                    d.exercises.forEach((ex, ei) => {
+                        dayExRows.push({ id: d.id + '_' + ex.id, day_id: d.id, exercise_id: ex.id, sort_order: ei });
+                    });
+                });
+            });
+            if (moduleRows.length) { const { error } = await q.from('modules').upsert(moduleRows); if (error) errs.push(error); }
+            if (dayRows.length) { const { error } = await q.from('workout_days').upsert(dayRows); if (error) errs.push(error); }
+            if (dayExRows.length) { const { error } = await q.from('day_exercises').upsert(dayExRows); if (error) errs.push(error); }
+
+            // --- Shared: weekly goal ---
+            { const { error } = await q.from('app_settings').upsert({ key: 'weeklyGoal', value: { value: appData.weeklyGoal } }); if (error) errs.push(error); }
+
+            // --- Per-person: workout_history (only this person's rows) ---
+            const histRows = appData.history.filter(h => h.person === person).map(h => ({
+                id: h.id, person: person, workout_date: isoDate(h.date),
+                module_id: h.moduleId || null, module_name: h.moduleName,
+                day_id: h.dayId || null, day_name: h.dayName, exercises: h.exercises || []
+            }));
+            if (histRows.length) { const { error } = await q.from('workout_history').upsert(histRows); if (error) errs.push(error); }
+
+            // --- Shared: challenges + tasks; Per-person: logs + checkins ---
+            const chalRows = [], taskRows = [], logRows = [], checkinRows = [];
+            appData.challenges.forEach(c => {
+                chalRows.push({ id: c.id, name: c.name, start_date: isoDate(c.startDate), duration_weeks: c.durationWeeks, end_date: isoDate(c.endDate) });
+                c.tasks.forEach((t, ti) => {
+                    taskRows.push({ id: t.id, challenge_id: c.id, title: t.title, type: t.type, target: t.target || 0, unit: t.unit || null, sort_order: ti });
+                    const pp = (t.progress && t.progress[person]) || {};
+                    (pp.logs || []).forEach(l => { if (!l.id) l.id = generateUuid(); logRows.push({ id: l.id, task_id: t.id, person: person, amount: l.amount, logged_at: new Date(l.date).toISOString() }); });
+                    (pp.days || []).forEach(dstr => checkinRows.push({ task_id: t.id, person: person, checkin_date: isoDate(new Date(dstr).getTime()) }));
+                });
+            });
+            if (chalRows.length) { const { error } = await q.from('challenges').upsert(chalRows); if (error) errs.push(error); }
+            if (taskRows.length) { const { error } = await q.from('challenge_tasks').upsert(taskRows); if (error) errs.push(error); }
+            if (logRows.length) { const { error } = await q.from('challenge_progress_logs').upsert(logRows); if (error) errs.push(error); }
+            if (checkinRows.length) { const { error } = await q.from('challenge_daily_checkins').upsert(checkinRows, { onConflict: 'task_id,person,checkin_date' }); if (error) errs.push(error); }
+
+            cloudAvailable = errs.length === 0;
+            if (errs.length) { console.warn('Supabase sync errors:', errs); throw errs[0]; }
+        }
+
+        // Delete rows from a Supabase table where `column` matches `value`
+        // (value may be a single value or an array for .in()). Fire-and-forget.
+        async function cloudDelete(table, column, value) {
+            if (!supabaseClient) return;
+            try {
+                let query = supabaseClient.from(table).delete();
+                query = Array.isArray(value) ? query.in(column, value) : query.eq(column, value);
+                const { error } = await query;
+                if (error) console.warn('cloudDelete ' + table + ' failed:', error);
+            } catch (e) { console.warn('cloudDelete ' + table + ' threw:', e); }
+        }
+
+        /* One-time migration: if an old single-blob localStorage save exists and the
+           cloud has no modules yet, push it up so nothing is lost on first upgrade. */
+        async function migrateLegacyIfNeeded() {
+            let legacy = null;
+            try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) legacy = JSON.parse(raw); } catch (e) {}
+            if (!legacy || !legacy.modules || !legacy.modules.length) return false;
+            if (appData.modules && appData.modules.length) return false; // cloud already has data
+            appData = legacy; normaliseAppData();
+            // History rows carry their own person tag; push all of them regardless of current user.
+            const person = currentUser || 'John';
+            writeCache(person, appData);
+            try {
+                await syncToCloud(person);
+                // also push the "other" person's legacy history if present
+                const others = PEOPLE.filter(p => p !== person);
+                for (const o of others) {
+                    const rows = appData.history.filter(h => h.person === o).map(h => ({
+                        id: h.id, person: o, workout_date: isoDate(h.date), module_id: h.moduleId || null,
+                        module_name: h.moduleName, day_id: h.dayId || null, day_name: h.dayName, exercises: h.exercises || []
+                    }));
+                    if (rows.length && supabaseClient) await supabaseClient.from('workout_history').upsert(rows);
+                }
+                try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                return true;
+            } catch (e) { console.warn('Legacy migration failed:', e); return false; }
+        }
+
+        // Proper UUID for tables whose id column is uuid (challenge_progress_logs).
+        function generateUuid() {
+            if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
+                const r = Math.random() * 16 | 0;
+                return (ch === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+            });
         }
 
         // Generate simple unique IDs
@@ -1313,7 +1527,7 @@
                 let hasWorkout = weeklyData.workouts.some(w => new Date(w.date).toDateString() === dayDate.toDateString());
                 
                 calHtml += `
-                    <div class="calendar-day ${isToday ? 'active' : ''}">
+                    <div class="calendar-day ${isToday ? 'active' : ''}" ${hasWorkout ? `style="cursor:pointer;" onclick="openHistoryDetailByDate('${dayDate.toDateString()}')"` : ''}>
                         <span class="day-name">${dayNames[i]}</span>
                         <span class="day-date">${dayDate.getDate()}</span>
                         <div class="dot ${hasWorkout ? 'active' : ''}"></div>
@@ -1373,12 +1587,10 @@
         // an uncaught error here would previously abort the whole script before
         // it even reached `window.onload = initApp` further down, meaning the
         // app would never initialize or seed its exercise library at all.
-        let currentLogPerson = 'John';
-        try {
-            currentLogPerson = localStorage.getItem('gym_last_person') || 'John';
-        } catch (e) {
-            console.warn('Could not read last-used person from localStorage:', e);
-        }
+        // In the per-user model the logged-in person is always the one logging,
+        // so this simply mirrors currentUser (set at login). Kept as a variable
+        // because many render functions reference it.
+        let currentLogPerson = currentUser || 'John';
 
         function setSelectedLogPerson(person) {
             if (person === currentLogPerson) return;
@@ -1528,7 +1740,8 @@
             
             document.getElementById('workout-selection').style.display = 'block';
             document.getElementById('active-workout').style.display = 'none';
-            document.getElementById('workout-person-section').style.display = 'block';
+            // Logging is locked to the logged-in user, so the person picker is hidden.
+            document.getElementById('workout-person-section').style.display = 'none';
             renderPersonToggle();
 
             if (appData.modules.length === 0) {
@@ -1678,9 +1891,8 @@
                 // Pre-fill & PB are based on whoever is currently set as default
                 const stats = getExerciseHistoryStats(ex.id, currentLogPerson);
                 
-                const savedForJohn  = !!(todaysJohnEntry  && todaysJohnEntry.exercises.some(e => e.id === ex.id));
-                const savedForEmily = !!(todaysEmilyEntry && todaysEmilyEntry.exercises.some(e => e.id === ex.id));
-                const isSaved = savedForJohn || savedForEmily;
+                const myEntry = currentLogPerson === 'Emily' ? todaysEmilyEntry : todaysJohnEntry;
+                const isSaved = !!(myEntry && myEntry.exercises.some(e => e.id === ex.id));
 
                 let lastDateStr = '';
                 if (stats.lastDate) {
@@ -1699,8 +1911,7 @@
                         <span class="ex-num">${index + 1}</span>
                         <span class="ex-name">${ex.name}</span>
                         <div class="ex-saved-indicators">
-                            <span class="saved-dot person-john${savedForJohn ? ' active' : ''}" title="John">J</span>
-                            <span class="saved-dot person-emily${savedForEmily ? ' active' : ''}" title="Emily">E</span>
+                            <span class="saved-dot person-${currentLogPerson.toLowerCase()}${isSaved ? ' active' : ''}" title="${currentLogPerson}">${currentLogPerson.charAt(0)}</span>
                         </div>
                         <span class="ex-card-chevron">›</span>
                     </div>
@@ -1713,11 +1924,6 @@
                             ? `<a href="javascript:void(0)" onclick="showExerciseHistory('${ex.id}', '${ex.name}')" class="ex-history-link">${lastDateStr} (view full history)</a>`
                             : `<p class="ex-first-time">First time — no history yet.</p>`
                         }
-
-                        <div class="card-person-toggle">
-                            <button type="button" class="card-person-btn person-john${currentLogPerson === 'John' ? ' active' : ''}" onclick="setCardPerson('${ex.id}', 'John')">John</button>
-                            <button type="button" class="card-person-btn person-emily${currentLogPerson === 'Emily' ? ' active' : ''}" onclick="setCardPerson('${ex.id}', 'Emily')">Emily</button>
-                        </div>
 
                         <div class="set-row-header">
                             <div></div><div>Weight (kg)</div><div>Reps</div><div></div>
@@ -1896,6 +2102,61 @@
             document.getElementById('ex-history-overlay').classList.remove('active');
         };
 
+        // --- Dashboard calendar -> workout detail popup ---
+        function isCardioEntry(h) {
+            return (h.dayName || '').toLowerCase().includes('cardio');
+        }
+
+        function renderWorkoutDetailBody(entries) {
+            // entries: all of the logged-in user's history entries for one calendar day
+            return entries.map(h => {
+                const cardio = isCardioEntry(h);
+                const exRows = (h.exercises || []).map(ex => {
+                    const sets = ex.setsList || (ex.weight || ex.reps ? [{ weight: ex.weight, reps: ex.reps }] : []);
+                    const setsHtml = sets.length
+                        ? sets.map((s, i) => `
+                            <div class="flex justify-between" style="font-size:0.82rem; padding:2px 0;">
+                                <span class="text-secondary">Set ${i + 1}</span>
+                                <span>${cardio
+                                    ? `${s.weight || '–'} min${s.reps ? ` · ${s.reps}` : ''}`
+                                    : `${s.weight || '–'} kg × ${s.reps || '–'} reps`}</span>
+                            </div>`).join('')
+                        : `<div class="text-secondary" style="font-size:0.8rem;">No sets recorded</div>`;
+                    return `
+                        <div style="padding:0.5rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <div style="font-weight:600; margin-bottom:2px;">${ex.name}</div>
+                            ${setsHtml}
+                        </div>
+                    `;
+                }).join('');
+                return `
+                    <div class="card" style="margin-bottom:0.75rem;">
+                        <h4 class="text-primary" style="margin-bottom:0.25rem;">${h.moduleName} — ${h.dayName}</h4>
+                        <p style="font-size:0.75rem; margin-bottom:0.5rem;">${cardio ? '🏃 Cardio session' : '🏋️ Workout'}</p>
+                        ${exRows || '<p style="font-size:0.85rem;">No exercises logged.</p>'}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openHistoryDetailByDate(dateStr) {
+            const entries = appData.history
+                .filter(h => new Date(h.date).toDateString() === dateStr)
+                .sort((a, b) => a.date - b.date);
+            if (entries.length === 0) return;
+
+            const d = new Date(dateStr);
+            document.getElementById('history-detail-title').innerText = 'Workout Details';
+            document.getElementById('history-detail-date').innerText =
+                d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + ` · ${currentUser}`;
+            document.getElementById('history-detail-body').innerHTML = renderWorkoutDetailBody(entries);
+            document.getElementById('history-detail-overlay').classList.add('active');
+        }
+
+        function closeHistoryDetail() {
+            document.getElementById('history-detail-overlay').classList.remove('active');
+        }
+
         /* -----------------------------------------
            6. SETTINGS / CONFIGURATION LOGIC
            ----------------------------------------- */
@@ -1906,22 +2167,20 @@
 
             const storageEl = document.getElementById('storage-status');
             if (storageEl) {
-                if (storageAvailable) {
-                    storageEl.innerHTML = '🟢 Local storage working — your data is saving on this device';
-                    storageEl.style.color = 'var(--success-color)';
-                } else {
-                    storageEl.innerHTML = '🔴 Local storage blocked on this device/browser — changes will NOT be saved after you close the page';
-                    storageEl.style.color = 'var(--error-color)';
-                }
+                storageEl.innerHTML = `👤 Logged in as <strong>${currentUser}</strong> · your workout history is saved to your own account`;
+                storageEl.style.color = 'var(--text-secondary)';
             }
 
             const statusEl = document.getElementById('supabase-status');
             if (statusEl) {
-                if (supabaseClient) {
-                    statusEl.innerHTML = '🟢 Supabase client connected (storage still local for now)';
+                if (supabaseClient && cloudAvailable) {
+                    statusEl.innerHTML = '🟢 Synced to Supabase — your data is available on any device';
                     statusEl.style.color = 'var(--success-color)';
+                } else if (supabaseClient) {
+                    statusEl.innerHTML = '🟡 Working offline — changes are cached on this device and will sync when the connection returns';
+                    statusEl.style.color = 'var(--error-color)';
                 } else {
-                    statusEl.innerHTML = '⚪ Supabase not configured — paste your URL & anon key near the top of the script';
+                    statusEl.innerHTML = '⚪ Supabase not configured';
                     statusEl.style.color = 'var(--text-secondary)';
                 }
             }
@@ -2003,8 +2262,14 @@
         }
         function deleteModule(modId) {
             if(confirm("Delete this module and all its days/exercises?")) {
+                const mod = appData.modules.find(m => m.id === modId);
+                const dayIds = mod ? mod.days.map(d => d.id) : [];
                 appData.modules = appData.modules.filter(m => m.id !== modId);
-                saveData(); renderSettings();
+                saveData();
+                if (dayIds.length) cloudDelete('day_exercises', 'day_id', dayIds);
+                cloudDelete('workout_days', 'module_id', modId);
+                cloudDelete('modules', 'id', modId);
+                renderSettings();
             }
         }
 
@@ -2029,7 +2294,12 @@
         function deleteDay(modId, dayId) {
             if(confirm("Delete this day and all its exercises?")) {
                 const m = appData.modules.find(x => x.id === modId);
-                if(m) { m.days = m.days.filter(x => x.id !== dayId); saveData(); renderSettings(); }
+                if(m) {
+                    m.days = m.days.filter(x => x.id !== dayId); saveData();
+                    cloudDelete('day_exercises', 'day_id', dayId);
+                    cloudDelete('workout_days', 'id', dayId);
+                    renderSettings();
+                }
             }
         }
 
@@ -2140,7 +2410,8 @@
                 days: [
                     { id: generateId(), name: "Push Day", exercises: toDayExercises(DEFAULT_PUSH_IDX) },
                     { id: generateId(), name: "Pull Day", exercises: toDayExercises(DEFAULT_PULL_IDX) },
-                    { id: generateId(), name: "Leg Day", exercises: toDayExercises(DEFAULT_LEG_IDX) }
+                    { id: generateId(), name: "Leg Day", exercises: toDayExercises(DEFAULT_LEG_IDX) },
+                    { id: generateId(), name: "Cardio Day", exercises: toDayExercises(DEFAULT_CARDIO_IDX) }
                 ]
             });
 
@@ -2175,12 +2446,20 @@
                 : "Remove this exercise from your library?";
             if (!confirm(warning)) return;
 
+            // Collect affected day_exercises link ids before removing them locally.
+            const linkIds = [];
+            appData.modules.forEach(m => m.days.forEach(d => {
+                d.exercises.forEach(e => { if (e.id === exId) linkIds.push(d.id + '_' + e.id); });
+            }));
+
             appData.exercises = appData.exercises.filter(e => e.id !== exId);
             appData.modules.forEach(m => m.days.forEach(d => {
                 d.exercises = d.exercises.filter(e => e.id !== exId);
             }));
 
             saveData();
+            if (linkIds.length) cloudDelete('day_exercises', 'id', linkIds);
+            cloudDelete('exercises', 'id', exId);
             renderSettings();
             showToast("Exercise deleted");
         }
@@ -2292,7 +2571,11 @@
             if(confirm("Delete this exercise?")) {
                 const m = appData.modules.find(x => x.id === modId);
                 const d = m.days.find(x => x.id === dayId);
-                if(d) { d.exercises = d.exercises.filter(x => x.id !== exId); saveData(); renderSettings(); }
+                if(d) {
+                    d.exercises = d.exercises.filter(x => x.id !== exId); saveData();
+                    cloudDelete('day_exercises', 'id', dayId + '_' + exId);
+                    renderSettings();
+                }
             }
         }
         function moveExercise(modId, dayId, exId, direction) {
@@ -2414,34 +2697,51 @@
                     statusPill = `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`;
                 }
 
-                const personRows = PEOPLE.map(person => {
-                    const taskProgresses = c.tasks.map(t => getTaskProgress(c, t, person));
+                // One card per person: John, then Emily. Each lists every task with
+                // that person's own progress and a done/remaining status.
+                const personCards = PEOPLE.map(person => {
+                    const taskProgresses = c.tasks.map(t => ({ task: t, prog: getTaskProgress(c, t, person) }));
                     const avgPct = taskProgresses.length > 0
-                        ? taskProgresses.reduce((s, tp) => s + tp.pct, 0) / taskProgresses.length
+                        ? taskProgresses.reduce((s, tp) => s + tp.prog.pct, 0) / taskProgresses.length
                         : 0;
+                    const doneCount = taskProgresses.filter(tp => tp.prog.isComplete).length;
+
+                    const taskRows = taskProgresses.map(({ task, prog }) => {
+                        const remaining = Math.max(0, (prog.target || 0) - prog.current);
+                        const remaining2 = Math.round(remaining * 100) / 100;
+                        const statusText = prog.isComplete
+                            ? '✅ Completed'
+                            : `${remaining2}${prog.unit ? ' ' + prog.unit : ''} left`;
+                        return `
+                            <div style="padding:0.45rem 0; border-bottom:1px solid rgba(255,255,255,0.06);">
+                                <div class="flex justify-between align-center" style="gap:0.5rem;">
+                                    <span style="font-size:0.85rem; ${prog.isComplete ? 'text-decoration:line-through; opacity:0.7;' : ''}">${task.title}</span>
+                                    <span style="font-size:0.72rem; font-weight:600; color:${prog.isComplete ? 'var(--success-color)' : 'var(--text-secondary)'}; white-space:nowrap;">${statusText}</span>
+                                </div>
+                                <div style="font-size:0.72rem; color:var(--text-secondary); margin:2px 0;">${prog.current} / ${prog.target}${prog.unit ? ' ' + prog.unit : ''}</div>
+                                <div class="mini-progress-container">
+                                    <div class="mini-progress-bar person-${person.toLowerCase()} ${prog.isComplete ? 'goal-hit' : ''}" style="width:${prog.pct}%"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('') || '<p style="font-size:0.8rem;">No tasks in this challenge.</p>';
+
                     return `
-                        <div class="challenge-person-row">
-                            <div class="challenge-person-label person-${person.toLowerCase()}">
-                                <span>${person}</span>
+                        <div class="card challenge-card" onclick="openChallengeDetail('${c.id}')">
+                            <div class="challenge-meta">
+                                <h3 style="margin:0;" class="text-${person === 'Emily' ? 'success' : 'primary'}">${c.name} · ${person}</h3>
+                                <span class="challenge-pill">${statusPill}</span>
+                            </div>
+                            <div class="challenge-person-label person-${person.toLowerCase()}" style="margin-bottom:0.5rem;">
+                                <span>${doneCount} of ${c.tasks.length} tasks done</span>
                                 <span>${Math.round(avgPct)}%</span>
                             </div>
-                            <div class="mini-progress-container">
-                                <div class="mini-progress-bar person-${person.toLowerCase()} ${avgPct >= 100 ? 'goal-hit' : ''}" style="width:${avgPct}%"></div>
-                            </div>
+                            ${taskRows}
                         </div>
                     `;
                 }).join('');
 
-                return `
-                    <div class="card challenge-card" onclick="openChallengeDetail('${c.id}')">
-                        <div class="challenge-meta">
-                            <h3 style="margin:0;">${c.name}</h3>
-                            <span class="challenge-pill">${statusPill}</span>
-                        </div>
-                        <p class="mb-1" style="font-size:0.8rem;">${c.durationWeeks} week${c.durationWeeks === 1 ? '' : 's'} · ${c.tasks.length} task${c.tasks.length === 1 ? '' : 's'}</p>
-                        ${personRows}
-                    </div>
-                `;
+                return personCards;
             }).join('');
         }
 
@@ -2664,7 +2964,8 @@
                 }
                 if (!task.progress[person]) task.progress[person] = { logs: [] };
                 if (!task.progress[person].logs) task.progress[person].logs = [];
-                task.progress[person].logs.push({ amount, date: Date.now() });
+                const nowMs = Date.now();
+                task.progress[person].logs.push({ id: generateUuid(), amount, date: nowMs });
                 saveData();
                 renderChallengeDetail();
                 renderChallenges();
@@ -2678,8 +2979,9 @@
             const logs = task.progress[person] && task.progress[person].logs;
             if (!logs || logs.length === 0) return;
             if (!confirm("Remove the most recent log entry?")) return;
-            logs.pop();
+            const removed = logs.pop();
             saveData();
+            if (removed && removed.id) cloudDelete('challenge_progress_logs', 'id', removed.id);
             renderChallengeDetail();
             renderChallenges();
         }
@@ -2693,10 +2995,22 @@
             const todayKey = new Date().toDateString();
             const days = task.progress[person].days;
             const idx = days.indexOf(todayKey);
-            if (idx >= 0) days.splice(idx, 1);
+            let removedDay = false;
+            if (idx >= 0) { days.splice(idx, 1); removedDay = true; }
             else days.push(todayKey);
 
             saveData();
+            // A daily check-in row is keyed by (task_id, person, checkin_date); when
+            // un-checking today we must delete that specific row so it doesn't return.
+            if (removedDay && supabaseClient) {
+                (async () => {
+                    try {
+                        const { error } = await supabaseClient.from('challenge_daily_checkins').delete()
+                            .eq('task_id', taskId).eq('person', person).eq('checkin_date', isoDate(new Date(todayKey).getTime()));
+                        if (error) console.warn('checkin delete failed:', error);
+                    } catch (e) { console.warn('checkin delete threw:', e); }
+                })();
+            }
             renderChallengeDetail();
             renderChallenges();
         }
@@ -2705,8 +3019,17 @@
             const challenge = getChallengeById(activeChallengeId);
             if (!challenge) return;
             if (!confirm(`Delete "${challenge.name}"? This cannot be undone.`)) return;
+            const chalId = challenge.id;
+            const taskIds = challenge.tasks.map(t => t.id);
             appData.challenges = appData.challenges.filter(c => c.id !== activeChallengeId);
             saveData();
+            // Remove from cloud (tasks/logs/checkins first, then the challenge).
+            if (taskIds.length) {
+                cloudDelete('challenge_progress_logs', 'task_id', taskIds);
+                cloudDelete('challenge_daily_checkins', 'task_id', taskIds);
+                cloudDelete('challenge_tasks', 'challenge_id', chalId);
+            }
+            cloudDelete('challenges', 'id', chalId);
             closeChallengeDetail();
             renderChallenges();
             showToast("Challenge deleted");
@@ -2715,36 +3038,82 @@
         /* -----------------------------------------
            8. INITIALIZATION
            ----------------------------------------- */
-        function initApp() {
-            loadData();
-            
-            // If completely empty on first launch (or storage is blocked entirely,
-            // in which case treat it the same as "nothing saved yet"), load a
-            // starter template so the app isn't blank.
-            if (!safeGetStorage()) {
-                const exData = DEFAULT_EXERCISES.map(name => ({ id: generateId(), name }));
-                appData.exercises = exData;
+        // Seed the starter routine into appData (used when the cloud is empty).
+        function seedStarterData() {
+            const exData = DEFAULT_EXERCISES.map(name => ({ id: generateId(), name }));
+            appData.exercises = exData;
+            const toDayExercises = idxList => idxList.map(i => ({ id: exData[i].id, name: exData[i].name }));
+            appData.modules = [{
+                id: generateId(),
+                name: "Push Pull Legs",
+                days: [
+                    { id: generateId(), name: "Push Day", exercises: toDayExercises(DEFAULT_PUSH_IDX) },
+                    { id: generateId(), name: "Pull Day", exercises: toDayExercises(DEFAULT_PULL_IDX) },
+                    { id: generateId(), name: "Leg Day", exercises: toDayExercises(DEFAULT_LEG_IDX) },
+                    { id: generateId(), name: "Cardio Day", exercises: toDayExercises(DEFAULT_CARDIO_IDX) }
+                ]
+            }];
+            appData.weeklyGoal = DEFAULT_WEEKLY_GOAL;
+            appData.challenges = [];
+        }
 
-                const toDayExercises = idxList => idxList.map(i => ({ id: exData[i].id, name: exData[i].name }));
+        // Shows the login screen; hides the app chrome until a person is chosen.
+        function showLogin() {
+            const ov = document.getElementById('login-overlay');
+            if (ov) ov.classList.remove('hidden');
+        }
+        function hideLogin() {
+            const ov = document.getElementById('login-overlay');
+            if (ov) ov.classList.add('hidden');
+        }
 
-                appData.modules = [
-                    {
-                        id: generateId(),
-                        name: "Push Pull Legs",
-                        days: [
-                            { id: generateId(), name: "Push Day", exercises: toDayExercises(DEFAULT_PUSH_IDX) },
-                            { id: generateId(), name: "Pull Day", exercises: toDayExercises(DEFAULT_PULL_IDX) },
-                            { id: generateId(), name: "Leg Day", exercises: toDayExercises(DEFAULT_LEG_IDX) }
-                        ]
-                    }
-                ];
+        function switchUser() {
+            currentUser = null;
+            try { localStorage.removeItem('gym_current_user'); } catch (e) {}
+            showLogin();
+        }
 
-                appData.weeklyGoal = DEFAULT_WEEKLY_GOAL;
-                appData.challenges = [];
+        // Called from the login buttons. Loads that person's data then boots the app.
+        async function loginAs(person) {
+            currentUser = person;
+            currentLogPerson = person;
+            try { localStorage.setItem('gym_current_user', person); } catch (e) {}
+            try { localStorage.setItem('gym_last_person', person); } catch (e) {}
+
+            const status = document.getElementById('login-status');
+            if (status) status.textContent = 'Loading ' + person + "'s data…";
+
+            await bootForCurrentUser();
+            hideLogin();
+        }
+
+        async function bootForCurrentUser() {
+            await loadData();
+
+            // First-run: cloud (and cache) empty -> seed starter routine, then migrate
+            // any legacy single-blob localStorage save up to the cloud.
+            const migrated = await migrateLegacyIfNeeded();
+            if (!migrated && (!appData.modules || appData.modules.length === 0)) {
+                seedStarterData();
                 saveData();
             }
-            
+
+            // Reflect the logged-in user in the header + workout toggle.
+            const nameEl = document.getElementById('header-user-name');
+            if (nameEl) nameEl.textContent = currentUser;
+            if (typeof renderPersonToggle === 'function') renderPersonToggle();
+
             navTo('dashboard');
+        }
+
+        async function initApp() {
+            if (currentUser) {
+                // Returning session on this device — skip the picker.
+                await bootForCurrentUser();
+                hideLogin();
+            } else {
+                showLogin();
+            }
         }
 
         // Start App
