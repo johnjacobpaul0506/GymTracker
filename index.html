@@ -695,7 +695,7 @@
         <section id="view-workout" class="view">
             <!-- Shown on setup screen only; hidden once exercise cards are loaded -->
             <div id="workout-person-section">
-                <p class="workout-person-label">Who's logging today?</p>
+                <p class="workout-person-label">Default logger (you can switch each exercise below)</p>
                 <div class="person-toggle" id="workout-person-toggle">
                     <button type="button" class="person-toggle-btn person-john" onclick="setSelectedLogPerson('John')">John</button>
                     <button type="button" class="person-toggle-btn person-emily" onclick="setSelectedLogPerson('Emily')">Emily</button>
@@ -1233,23 +1233,26 @@
             // --- Shared: weekly goal ---
             { const { error } = await q.from('app_settings').upsert({ key: 'weeklyGoal', value: { value: appData.weeklyGoal } }); if (error) errs.push(error); }
 
-            // --- Per-person: workout_history (only this person's rows) ---
-            const histRows = appData.history.filter(h => h.person === person).map(h => ({
-                id: h.id, person: person, workout_date: isoDate(h.date),
+            // --- Per-person: workout_history (ALL people, so logging both from one
+            //     phone actually persists both). Each row keeps its own person tag. ---
+            const histRows = appData.history.map(h => ({
+                id: h.id, person: h.person, workout_date: isoDate(h.date),
                 module_id: h.moduleId || null, module_name: h.moduleName,
                 day_id: h.dayId || null, day_name: h.dayName, exercises: h.exercises || []
             }));
             if (histRows.length) { const { error } = await q.from('workout_history').upsert(histRows); if (error) errs.push(error); }
 
-            // --- Shared: challenges + tasks; Per-person: logs + checkins ---
+            // --- Shared: challenges + tasks; Per-person: logs + checkins (ALL people) ---
             const chalRows = [], taskRows = [], logRows = [], checkinRows = [];
             appData.challenges.forEach(c => {
                 chalRows.push({ id: c.id, name: c.name, start_date: isoDate(c.startDate), duration_weeks: c.durationWeeks, end_date: isoDate(c.endDate) });
                 c.tasks.forEach((t, ti) => {
                     taskRows.push({ id: t.id, challenge_id: c.id, title: t.title, type: t.type, target: t.target || 0, unit: t.unit || null, sort_order: ti });
-                    const pp = (t.progress && t.progress[person]) || {};
-                    (pp.logs || []).forEach(l => { if (!l.id) l.id = generateUuid(); logRows.push({ id: l.id, task_id: t.id, person: person, amount: l.amount, logged_at: new Date(l.date).toISOString() }); });
-                    (pp.days || []).forEach(dstr => checkinRows.push({ task_id: t.id, person: person, checkin_date: isoDate(new Date(dstr).getTime()) }));
+                    PEOPLE.forEach(pers => {
+                        const pp = (t.progress && t.progress[pers]) || {};
+                        (pp.logs || []).forEach(l => { if (!l.id) l.id = generateUuid(); logRows.push({ id: l.id, task_id: t.id, person: pers, amount: l.amount, logged_at: new Date(l.date).toISOString() }); });
+                        (pp.days || []).forEach(dstr => checkinRows.push({ task_id: t.id, person: pers, checkin_date: isoDate(new Date(dstr).getTime()) }));
+                    });
                 });
             });
             if (chalRows.length) { const { error } = await q.from('challenges').upsert(chalRows); if (error) errs.push(error); }
@@ -1740,8 +1743,8 @@
             
             document.getElementById('workout-selection').style.display = 'block';
             document.getElementById('active-workout').style.display = 'none';
-            // Logging is locked to the logged-in user, so the person picker is hidden.
-            document.getElementById('workout-person-section').style.display = 'none';
+            // Default-logger picker; each exercise card can still be switched individually.
+            document.getElementById('workout-person-section').style.display = 'block';
             renderPersonToggle();
 
             if (appData.modules.length === 0) {
@@ -1891,8 +1894,9 @@
                 // Pre-fill & PB are based on whoever is currently set as default
                 const stats = getExerciseHistoryStats(ex.id, currentLogPerson);
                 
-                const myEntry = currentLogPerson === 'Emily' ? todaysEmilyEntry : todaysJohnEntry;
-                const isSaved = !!(myEntry && myEntry.exercises.some(e => e.id === ex.id));
+                const savedForJohn  = !!(todaysJohnEntry  && todaysJohnEntry.exercises.some(e => e.id === ex.id));
+                const savedForEmily = !!(todaysEmilyEntry && todaysEmilyEntry.exercises.some(e => e.id === ex.id));
+                const isSaved = savedForJohn || savedForEmily;
 
                 let lastDateStr = '';
                 if (stats.lastDate) {
@@ -1911,7 +1915,8 @@
                         <span class="ex-num">${index + 1}</span>
                         <span class="ex-name">${ex.name}</span>
                         <div class="ex-saved-indicators">
-                            <span class="saved-dot person-${currentLogPerson.toLowerCase()}${isSaved ? ' active' : ''}" title="${currentLogPerson}">${currentLogPerson.charAt(0)}</span>
+                            <span class="saved-dot person-john${savedForJohn ? ' active' : ''}" title="John">J</span>
+                            <span class="saved-dot person-emily${savedForEmily ? ' active' : ''}" title="Emily">E</span>
                         </div>
                         <span class="ex-card-chevron">›</span>
                     </div>
@@ -1924,6 +1929,11 @@
                             ? `<a href="javascript:void(0)" onclick="showExerciseHistory('${ex.id}', '${ex.name}')" class="ex-history-link">${lastDateStr} (view full history)</a>`
                             : `<p class="ex-first-time">First time — no history yet.</p>`
                         }
+
+                        <div class="card-person-toggle">
+                            <button type="button" class="card-person-btn person-john${currentLogPerson === 'John' ? ' active' : ''}" onclick="setCardPerson('${ex.id}', 'John')">John</button>
+                            <button type="button" class="card-person-btn person-emily${currentLogPerson === 'Emily' ? ' active' : ''}" onclick="setCardPerson('${ex.id}', 'Emily')">Emily</button>
+                        </div>
 
                         <div class="set-row-header">
                             <div></div><div>Weight (kg)</div><div>Reps</div><div></div>
