@@ -287,24 +287,6 @@
         }
         .modal-overlay.active { opacity: 1; visibility: visible; }
 
-        /* Login overlay */
-        .login-overlay {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg-color);
-            display: flex; align-items: center; justify-content: center;
-            z-index: 3000; padding: 1.5rem; text-align: center;
-        }
-        .login-overlay.hidden { display: none; }
-        .login-card { width: 100%; max-width: 360px; }
-        .login-people { display: flex; gap: 1rem; }
-        .login-person-btn {
-            flex: 1; padding: 1.25rem 0.5rem; font-size: 1.1rem; font-weight: 600;
-            border-radius: var(--border-radius); border: 2px solid var(--border-color);
-            background: var(--surface-color); color: var(--text-primary); cursor: pointer;
-            transition: var(--transition);
-        }
-        .login-person-btn.person-john:active, .login-person-btn.person-john:hover { border-color: var(--primary-color); color: var(--primary-color); }
-        .login-person-btn.person-emily:active, .login-person-btn.person-emily:hover { border-color: var(--secondary-color); color: var(--secondary-color); }
         .modal {
             background: var(--surface-color);
             width: 90%;
@@ -637,26 +619,8 @@
 </head>
 <body>
 
-    <!-- Login / person picker (shown until a person is chosen) -->
-    <div id="login-overlay" class="login-overlay">
-        <div class="login-card">
-            <div style="font-size:3rem; margin-bottom:0.5rem;">🏋️</div>
-            <h1 style="margin-bottom:0.25rem;">Gym Progress</h1>
-            <p class="mb-2">Who's logging in?</p>
-            <div id="login-status" class="mb-2" style="font-size:0.78rem; min-height:1.1rem;"></div>
-            <div class="login-people">
-                <button type="button" class="login-person-btn person-john" onclick="loginAs('John')">John</button>
-                <button type="button" class="login-person-btn person-emily" onclick="loginAs('Emily')">Emily</button>
-            </div>
-        </div>
-    </div>
-
     <header>
-        <div class="flex justify-between align-center" style="gap:0.5rem;">
-            <span style="width:70px;"></span>
-            <h1 id="header-title" class="text-center" style="margin:0; flex:1;">Gym Progress</h1>
-            <button id="header-switch-user" class="btn-icon" style="width:70px; font-size:0.72rem; white-space:nowrap;" onclick="switchUser()" title="Switch user">🔄 <span id="header-user-name"></span></button>
-        </div>
+        <h1 id="header-title" class="text-center">Gym Progress</h1>
     </header>
 
     <main class="container" id="app">
@@ -766,7 +730,9 @@
             <h2 class="mb-2">Settings</h2>
 
             <p id="storage-status" class="mb-1" style="font-size:0.78rem;"></p>
-            <p id="supabase-status" class="mb-2" style="font-size:0.78rem;"></p>
+            <p id="supabase-status" class="mb-1" style="font-size:0.78rem;"></p>
+            <p id="sync-diagnostics" class="mb-1" style="font-size:0.72rem; word-break:break-word;"></p>
+            <button class="btn btn-secondary mb-2" style="font-size:0.78rem; padding:0.5rem;" onclick="testCloudSave()">🔄 Test cloud save now</button>
 
             <div class="card">
                 <h3 class="mb-1">Weekly Goal</h3>
@@ -1013,15 +979,13 @@
         // Legacy single-blob key (pre per-user). Read once for one-time migration.
         const STORAGE_KEY = 'gym_progress_tracker_data';
 
-        // The currently logged-in person. Set via the login screen. All per-person
-        // data (history, challenge check-ins/logs) is loaded/saved for this user.
-        let currentUser = null;
-        try { currentUser = localStorage.getItem('gym_current_user') || null; } catch (e) {}
+        // No login: the app loads ALL data (both people's) on startup and tags
+        // individual entries by person via the in-workout John/Emily toggle.
 
         // Per-person local cache key (offline fallback so the app still opens if
         // the network / Supabase is unreachable). Shared data + this user's
         // per-person data get cached together under their own key.
-        function cacheKeyFor(person) { return 'gym_cache_' + person; }
+        const CACHE_KEY = 'gym_cache_all';
 
         // The people whose progress this app tracks
         const PEOPLE = ['John', 'Emily'];
@@ -1064,16 +1028,18 @@
 
         // Tracks whether the last Supabase sync succeeded (surfaced in Settings).
         let cloudAvailable = false;
+        let lastSyncErrors = [];
+        let lastSyncAt = null;
 
         // ---- Per-person local cache (offline fallback) ----
-        function readCache(person) {
+        function readCache() {
             try {
-                const raw = localStorage.getItem(cacheKeyFor(person));
+                const raw = localStorage.getItem(CACHE_KEY);
                 return raw ? JSON.parse(raw) : null;
             } catch (e) { storageAvailable = false; return null; }
         }
-        function writeCache(person, data) {
-            try { localStorage.setItem(cacheKeyFor(person), JSON.stringify(data)); storageAvailable = true; }
+        function writeCache(data) {
+            try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); storageAvailable = true; }
             catch (e) { storageAvailable = false; }
         }
 
@@ -1098,11 +1064,11 @@
 
         /* Build the flat Supabase rows from the nested appData shape.
            Shared tables (modules/days/exercises/challenges/tasks/settings) are
-           written wholesale; per-person tables carry currentUser as `person`. */
+           written wholesale; per-person tables carry their own `person` tag. */
         function isoDate(ms) { return new Date(ms).toISOString().slice(0, 10); }
 
         // ---- Load shared data + this person's data from Supabase into appData ----
-        async function loadFromCloud(person) {
+        async function loadFromCloud() {
             if (!supabaseClient) throw new Error('no client');
             const q = supabaseClient;
 
@@ -1179,16 +1145,15 @@
 
         // Public loader used by initApp: pulls this person's data, falls back to cache.
         async function loadData() {
-            const person = currentUser || 'John';
             try {
-                appData = await loadFromCloud(person);
+                appData = await loadFromCloud();
                 cloudAvailable = true;
                 normaliseAppData();
-                writeCache(person, appData);
+                writeCache(appData);
             } catch (e) {
                 console.warn('Cloud load failed, using local cache:', e);
                 cloudAvailable = false;
-                const cached = readCache(person);
+                const cached = readCache();
                 if (cached) appData = cached;
                 normaliseAppData();
             }
@@ -1199,12 +1164,25 @@
            cloud sync (fire-and-forget) and always updates the local cache first
            so nothing is lost if the network blips. */
         function saveData() {
-            const person = currentUser || 'John';
-            writeCache(person, appData);
-            syncToCloud(person).catch(e => console.warn('Cloud sync failed (cached locally):', e));
+            writeCache(appData);
+            syncToCloud().catch(e => console.warn('Cloud sync failed (cached locally):', e));
         }
 
-        async function syncToCloud(person) {
+        async function syncToCloud() {
+            try {
+                return await _syncToCloudInner();
+            } catch (e) {
+                // Network-level or unexpected throw (e.g. host blocked, offline).
+                cloudAvailable = false;
+                lastSyncAt = Date.now();
+                if (!lastSyncErrors || lastSyncErrors.length === 0) {
+                    lastSyncErrors = [{ where: 'network', error: { message: (e && e.message) || String(e) } }];
+                }
+                throw e;
+            }
+        }
+
+        async function _syncToCloudInner() {
             if (!supabaseClient) { cloudAvailable = false; return; }
             const q = supabaseClient;
             const errs = [];
@@ -1212,7 +1190,7 @@
             // --- Shared: exercises ---
             if (appData.exercises.length) {
                 const { error } = await q.from('exercises').upsert(appData.exercises.map(e => ({ id: e.id, name: e.name })));
-                if (error) errs.push(error);
+                if (error) errs.push({ where: 'exercises', error });
             }
 
             // --- Shared: modules / days / day_exercises ---
@@ -1226,12 +1204,12 @@
                     });
                 });
             });
-            if (moduleRows.length) { const { error } = await q.from('modules').upsert(moduleRows); if (error) errs.push(error); }
-            if (dayRows.length) { const { error } = await q.from('workout_days').upsert(dayRows); if (error) errs.push(error); }
-            if (dayExRows.length) { const { error } = await q.from('day_exercises').upsert(dayExRows); if (error) errs.push(error); }
+            if (moduleRows.length) { const { error } = await q.from('modules').upsert(moduleRows); if (error) errs.push({ where: 'modules', error }); }
+            if (dayRows.length) { const { error } = await q.from('workout_days').upsert(dayRows); if (error) errs.push({ where: 'workout_days', error }); }
+            if (dayExRows.length) { const { error } = await q.from('day_exercises').upsert(dayExRows); if (error) errs.push({ where: 'day_exercises', error }); }
 
             // --- Shared: weekly goal ---
-            { const { error } = await q.from('app_settings').upsert({ key: 'weeklyGoal', value: { value: appData.weeklyGoal } }); if (error) errs.push(error); }
+            { const { error } = await q.from('app_settings').upsert({ key: 'weeklyGoal', value: { value: appData.weeklyGoal } }); if (error) errs.push({ where: 'app_settings', error }); }
 
             // --- Per-person: workout_history (ALL people, so logging both from one
             //     phone actually persists both). Each row keeps its own person tag. ---
@@ -1240,7 +1218,7 @@
                 module_id: h.moduleId || null, module_name: h.moduleName,
                 day_id: h.dayId || null, day_name: h.dayName, exercises: h.exercises || []
             }));
-            if (histRows.length) { const { error } = await q.from('workout_history').upsert(histRows); if (error) errs.push(error); }
+            if (histRows.length) { const { error } = await q.from('workout_history').upsert(histRows); if (error) errs.push({ where: 'workout_history', error }); }
 
             // --- Shared: challenges + tasks; Per-person: logs + checkins (ALL people) ---
             const chalRows = [], taskRows = [], logRows = [], checkinRows = [];
@@ -1255,13 +1233,21 @@
                     });
                 });
             });
-            if (chalRows.length) { const { error } = await q.from('challenges').upsert(chalRows); if (error) errs.push(error); }
-            if (taskRows.length) { const { error } = await q.from('challenge_tasks').upsert(taskRows); if (error) errs.push(error); }
-            if (logRows.length) { const { error } = await q.from('challenge_progress_logs').upsert(logRows); if (error) errs.push(error); }
-            if (checkinRows.length) { const { error } = await q.from('challenge_daily_checkins').upsert(checkinRows, { onConflict: 'task_id,person,checkin_date' }); if (error) errs.push(error); }
+            if (chalRows.length) { for (const row of chalRows) { const { error } = await q.from('challenges').upsert(row); if (error) errs.push({ where: 'challenges', error }); } }
+            if (taskRows.length) { for (const row of taskRows) { const { error } = await q.from('challenge_tasks').upsert(row); if (error) errs.push({ where: 'challenge_tasks', error }); } }
+            if (logRows.length) { const { error } = await q.from('challenge_progress_logs').upsert(logRows); if (error) errs.push({ where: 'challenge_progress_logs', error }); }
+            if (checkinRows.length) { const { error } = await q.from('challenge_daily_checkins').upsert(checkinRows, { onConflict: 'task_id,person,checkin_date' }); if (error) errs.push({ where: 'challenge_daily_checkins', error }); }
 
             cloudAvailable = errs.length === 0;
-            if (errs.length) { console.warn('Supabase sync errors:', errs); throw errs[0]; }
+            lastSyncErrors = errs;
+            lastSyncAt = Date.now();
+            if (errs.length) {
+                const first = errs[0];
+                const msg = (first.where ? first.where + ': ' : '') + (first.error && (first.error.message || first.error.details || JSON.stringify(first.error)));
+                console.warn('Supabase sync errors:', errs);
+                if (typeof showToast === 'function') showToast('⚠️ Cloud save failed — ' + msg);
+                throw first.error || new Error(msg);
+            }
         }
 
         // Delete rows from a Supabase table where `column` matches `value`
@@ -1284,20 +1270,10 @@
             if (!legacy || !legacy.modules || !legacy.modules.length) return false;
             if (appData.modules && appData.modules.length) return false; // cloud already has data
             appData = legacy; normaliseAppData();
-            // History rows carry their own person tag; push all of them regardless of current user.
-            const person = currentUser || 'John';
-            writeCache(person, appData);
+            writeCache(appData);
             try {
-                await syncToCloud(person);
-                // also push the "other" person's legacy history if present
-                const others = PEOPLE.filter(p => p !== person);
-                for (const o of others) {
-                    const rows = appData.history.filter(h => h.person === o).map(h => ({
-                        id: h.id, person: o, workout_date: isoDate(h.date), module_id: h.moduleId || null,
-                        module_name: h.moduleName, day_id: h.dayId || null, day_name: h.dayName, exercises: h.exercises || []
-                    }));
-                    if (rows.length && supabaseClient) await supabaseClient.from('workout_history').upsert(rows);
-                }
+                // syncToCloud already pushes ALL people's rows.
+                await syncToCloud();
                 try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
                 return true;
             } catch (e) { console.warn('Legacy migration failed:', e); return false; }
@@ -1590,10 +1566,10 @@
         // an uncaught error here would previously abort the whole script before
         // it even reached `window.onload = initApp` further down, meaning the
         // app would never initialize or seed its exercise library at all.
-        // In the per-user model the logged-in person is always the one logging,
-        // so this simply mirrors currentUser (set at login). Kept as a variable
-        // because many render functions reference it.
-        let currentLogPerson = currentUser || 'John';
+        // Default person for the workout screen's toggle; each exercise card can be
+        // switched between John and Emily individually before saving.
+        let currentLogPerson = 'John';
+        try { currentLogPerson = localStorage.getItem('gym_last_person') || 'John'; } catch (e) {}
 
         function setSelectedLogPerson(person) {
             if (person === currentLogPerson) return;
@@ -2141,8 +2117,8 @@
                 }).join('');
                 return `
                     <div class="card" style="margin-bottom:0.75rem;">
-                        <h4 class="text-primary" style="margin-bottom:0.25rem;">${h.moduleName} — ${h.dayName}</h4>
-                        <p style="font-size:0.75rem; margin-bottom:0.5rem;">${cardio ? '🏃 Cardio session' : '🏋️ Workout'}</p>
+                        <h4 class="text-${h.person === 'Emily' ? 'success' : 'primary'}" style="margin-bottom:0.25rem;">${h.person} · ${h.dayName}</h4>
+                        <p style="font-size:0.75rem; margin-bottom:0.5rem;">${h.moduleName} · ${cardio ? '🏃 Cardio session' : '🏋️ Workout'}</p>
                         ${exRows || '<p style="font-size:0.85rem;">No exercises logged.</p>'}
                     </div>
                 `;
@@ -2158,7 +2134,7 @@
             const d = new Date(dateStr);
             document.getElementById('history-detail-title').innerText = 'Workout Details';
             document.getElementById('history-detail-date').innerText =
-                d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) + ` · ${currentUser}`;
+                d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
             document.getElementById('history-detail-body').innerHTML = renderWorkoutDetailBody(entries);
             document.getElementById('history-detail-overlay').classList.add('active');
         }
@@ -2177,7 +2153,7 @@
 
             const storageEl = document.getElementById('storage-status');
             if (storageEl) {
-                storageEl.innerHTML = `👤 Logged in as <strong>${currentUser}</strong> · your workout history is saved to your own account`;
+                storageEl.innerHTML = `🏋️ Tracking workouts for <strong>John</strong> & <strong>Emily</strong> · all data syncs across devices`;
                 storageEl.style.color = 'var(--text-secondary)';
             }
 
@@ -2192,6 +2168,21 @@
                 } else {
                     statusEl.innerHTML = '⚪ Supabase not configured';
                     statusEl.style.color = 'var(--text-secondary)';
+                }
+            }
+
+            const diagEl = document.getElementById('sync-diagnostics');
+            if (diagEl) {
+                if (!lastSyncAt) {
+                    diagEl.textContent = '';
+                } else if (lastSyncErrors.length === 0) {
+                    diagEl.style.color = 'var(--text-secondary)';
+                    diagEl.textContent = 'Last sync OK at ' + new Date(lastSyncAt).toLocaleTimeString();
+                } else {
+                    const f = lastSyncErrors[0];
+                    const detail = (f.error && (f.error.message || f.error.details || f.error.hint || JSON.stringify(f.error))) || 'unknown error';
+                    diagEl.style.color = 'var(--error-color)';
+                    diagEl.textContent = '⚠️ Last sync failed on "' + (f.where || '?') + '": ' + detail;
                 }
             }
 
@@ -2387,6 +2378,18 @@
         // "stale device storage" scenario as the exercise library, just for
         // appData.modules instead. Won't duplicate it if it already exists,
         // and asks before adding alongside any other module(s) you've set up.
+        async function testCloudSave() {
+            if (!supabaseClient) { showToast('Supabase not configured'); return; }
+            showToast('Testing cloud save…');
+            try {
+                await syncToCloud();
+                showToast('✅ Cloud save succeeded');
+            } catch (e) {
+                // error detail already captured in lastSyncErrors
+            }
+            renderSettings();
+        }
+
         function restoreDefaultRoutine() {
             if (appData.modules.some(m => m.name === 'Push Pull Legs')) {
                 alert('You already have a "Push Pull Legs" module — nothing to restore.');
@@ -2857,7 +2860,7 @@
             }).join('');
         }
 
-        function submitCreateChallenge() {
+        async function submitCreateChallenge() {
             const name = document.getElementById('challenge-name-input').value.trim();
             const startInput = document.getElementById('challenge-start-input').value;
             const durationWeeks = parseInt(document.getElementById('challenge-duration-input').value, 10) || 0;
@@ -2879,10 +2882,25 @@
                 tasks: draftTasks
             });
 
-            saveData();
+            writeCache(appData);
             closeCreateChallenge();
             renderChallenges();
-            showToast(`"${name}" challenge created`);
+
+            // Confirm the cloud write so a silent failure can't hide (this is what
+            // makes a challenge appear on your other devices).
+            if (supabaseClient) {
+                showToast(`Saving "${name}" to the cloud…`);
+                try {
+                    await syncToCloud();
+                    showToast(`✅ "${name}" saved — it will appear on your other devices`);
+                } catch (e) {
+                    const f = (lastSyncErrors && lastSyncErrors[0]) || {};
+                    const detail = (f.error && (f.error.message || f.error.details || f.error.hint)) || 'unknown error';
+                    showToast(`⚠️ Saved on this device only — cloud rejected it (${f.where || '?'}: ${detail}). See Settings.`);
+                }
+            } else {
+                showToast(`"${name}" created (offline — will sync later)`);
+            }
         }
 
         // --- Challenge Detail & Tracking ---
@@ -3067,63 +3085,21 @@
             appData.challenges = [];
         }
 
-        // Shows the login screen; hides the app chrome until a person is chosen.
-        function showLogin() {
-            const ov = document.getElementById('login-overlay');
-            if (ov) ov.classList.remove('hidden');
-        }
-        function hideLogin() {
-            const ov = document.getElementById('login-overlay');
-            if (ov) ov.classList.add('hidden');
-        }
 
-        function switchUser() {
-            currentUser = null;
-            try { localStorage.removeItem('gym_current_user'); } catch (e) {}
-            showLogin();
-        }
-
-        // Called from the login buttons. Loads that person's data then boots the app.
-        async function loginAs(person) {
-            currentUser = person;
-            currentLogPerson = person;
-            try { localStorage.setItem('gym_current_user', person); } catch (e) {}
-            try { localStorage.setItem('gym_last_person', person); } catch (e) {}
-
-            const status = document.getElementById('login-status');
-            if (status) status.textContent = 'Loading ' + person + "'s data…";
-
-            await bootForCurrentUser();
-            hideLogin();
-        }
-
-        async function bootForCurrentUser() {
+        // No login. Load all data from the cloud (both people, all challenges),
+        // seed a starter routine on genuine first run, then open the dashboard.
+        async function initApp() {
             await loadData();
 
-            // First-run: cloud (and cache) empty -> seed starter routine, then migrate
-            // any legacy single-blob localStorage save up to the cloud.
             const migrated = await migrateLegacyIfNeeded();
             if (!migrated && (!appData.modules || appData.modules.length === 0)) {
+                // Nothing loaded (brand-new database, or offline with no cache) -> seed once.
                 seedStarterData();
                 saveData();
             }
 
-            // Reflect the logged-in user in the header + workout toggle.
-            const nameEl = document.getElementById('header-user-name');
-            if (nameEl) nameEl.textContent = currentUser;
             if (typeof renderPersonToggle === 'function') renderPersonToggle();
-
             navTo('dashboard');
-        }
-
-        async function initApp() {
-            if (currentUser) {
-                // Returning session on this device — skip the picker.
-                await bootForCurrentUser();
-                hideLogin();
-            } else {
-                showLogin();
-            }
         }
 
         // Start App
